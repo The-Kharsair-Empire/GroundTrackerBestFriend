@@ -1,9 +1,10 @@
-from src.scrapper import html
+from src.scrapper import getRawTLEPage, url_candidates
 from src.tle import TLE
 
 
 def main():
     # print(html)
+    html = getRawTLEPage(url_candidates['last30days'])
     lines = html.split('\r\n')
     lines = list(map(lambda x:x.strip(), lines))
     # print(lines)
