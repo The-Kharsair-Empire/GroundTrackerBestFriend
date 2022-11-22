@@ -23,17 +23,6 @@ class TLE:
     
     def __init__(self, name: str, raw_line_1: str, raw_line_2: str, perform_check=False, body_mu = 3.986004418 * (10 ** 14)):
         self.name = name.strip()
-        # split_line_1 = raw_line_1.strip().split(' ')
-        # split_line_2 = raw_line_2.strip().split(' ')
-        # print(name)
-        # print(raw_line_1)
-        # print(raw_line_2)
-        # print()
-        # split_line_1 = list(filter(lambda x: x!='', split_line_1))
-        # split_line_2 = list(filter(lambda x: x!='', split_line_2))
-        # print(split_line_1)
-        # print(split_line_2)
-
         self.body_mu = body_mu # default to Earth's mu
 
         #first line
