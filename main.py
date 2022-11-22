@@ -17,9 +17,5 @@ def main():
 
     # print(tles[0].get_semi_major_axis())
         
-        
-    
-    
-
 if __name__ == '__main__':
     main()
