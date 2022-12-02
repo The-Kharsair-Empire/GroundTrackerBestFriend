@@ -1,5 +1,5 @@
-from src.scrapper import getRawTLEPage, url_candidates
-from src.tle import TLE
+from temp import getRawTLEPage, url_candidates
+from temp.tle import TLE
 
 
 def main():
