@@ -32,7 +32,10 @@ class OrbitPropagator:
         ys = np.zeros((self.n_steps, 6))
         ts = np.zeros((self.n_steps, 1))
 
-        y0 = self.r0 + self.v0
+        if isinstance(self.r0, np.ndarray):
+            y0 = self.r0.tolist() + self.v0.tolist()
+        else:
+            y0 = self.r0 + self.v0
 
         ys[0] = np.array(y0)  # set initial state
 
