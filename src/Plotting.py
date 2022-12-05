@@ -55,7 +55,7 @@ def plot_3d(r, body_rad, title='Orbit', show_plot=True):
         plt.savefig('figures/{}.png'.format(title), dpi=300)
 
 
-def plot_n_orbit_3d(rs, labels, body_rad, title='Orbits', show_plot=True):
+def plot_n_orbit_3d(rs, labels, body_rad, col=['r', 'y', 'b', 'm'], label_col=['b*', 'g*', 'r*', 'y*'], title='Orbits', show_plot=True):
     assert len(rs) == len(labels), "you should assign a label for each orbit"
 
     fig = plt.figure(figsize=(10, 10))
@@ -79,8 +79,8 @@ def plot_n_orbit_3d(rs, labels, body_rad, title='Orbits', show_plot=True):
     for i in range(len(rs)):
         r = rs[i]
         label = labels[i]
-        ax.plot(r[:, 0], r[:, 1], r[:, 2], 'r', label=f'{label}\'s Trajectory')
-        ax.plot([r[0, 0]], [r[0, 1]], [r[0, 2]], 'b*', label=f'{label}\'s Initial Position')
+        ax.plot(r[:, 0], r[:, 1], r[:, 2], col[i], label=f'{label}\'s Trajectory')
+        ax.plot([r[0, 0]], [r[0, 1]], [r[0, 2]], label_col[i], label=f'{label}\'s Initial Position')
         this_max_val = np.max(np.abs(r))
         if this_max_val > max_val:
             max_val = this_max_val

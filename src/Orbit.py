@@ -17,7 +17,7 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
         aop *= d2r
         ta *= d2r
 
-    E = eccentric_anomaly(ta, e, 'tae')
+    E = ta2E(ta, e)
 
     r_norm = a * (1 - e ** 2) / (1 + e * math.cos(ta))
 
@@ -33,8 +33,8 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
 
 
 def eci2perifocal(raan, i, aop):
-    s = math.sin
-    c = math.cos
+    s = np.sin
+    c = np.cos
     return np.array([
         [-s(raan) * c(i) * s(aop) + c(raan) * c(aop), c(raan) * c(i) * s(aop) + s(raan) * c(aop), s(i) * s(aop)],
         [-s(raan) * c(i) * c(aop) - c(raan) * s(aop), c(raan) * c(i) * c(aop) - s(raan) * s(aop), s(i) * c(aop)],
@@ -46,12 +46,34 @@ def perifocal2eci(raan, i, aop):
     return np.transpose(eci2perifocal(raan, i, aop))
 
 
-def eccentric_anomaly(anomaly, e, method='newton', tolerance=1e-8):
-    if method == 'newton':
-        M = anomaly
-        pass
-    elif method == 'tae':
-        ta = anomaly
-        return 2 * math.atan(math.sqrt((1 - e) / (1 + e)) * math.tan(ta / 2.0))
+def ta2E(ta, e):
+    # getting eccentric anomaly from true anomaly
+    return 2 * np.arctan(np.sqrt((1 - e) / (1 + e)) * np.tan(ta / 2.0))
 
-    raise ArithmeticError("no eccentric anomaly implemented")
+
+def M2E(M, e, tolerance=1e-8, max_step=200):
+    # newton's method for solving eccentric anomaly using mean anomaly
+    def iterative_step(E):
+        return (E - e * np.sin(E) - M) / (1 - e * np.cos(E))
+
+    if M < np.pi / 2.0:
+        E0 = M + e / 2.0
+    else:
+        E0 = M - e
+
+    E1 = E0 - iterative_step(E0)
+    for n in range(200):
+        if abs(E1 - E0) < tolerance:
+            return E1
+        else:
+            E0 = E1
+            E1 -= iterative_step(E1)
+
+
+def E2ta(E, e):
+    # getting true anomaly from eccentric anomaly
+    return 2 * np.arctan(math.sqrt((1 + e) / (1 - e)) * np.tan(E / 2.0))
+
+
+def get_r_mag(a, e, E):
+    return a * (1 - e * np.cos(E))
