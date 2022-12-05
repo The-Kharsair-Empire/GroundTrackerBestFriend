@@ -1,7 +1,9 @@
 import numpy as np
 from scipy.integrate import ode
-
+from multiprocessing import Process, SimpleQueue
 from src import CelestialData as celestialBody
+from .TLE import tle2coes
+from .Orbit import coes2rv
 
 
 class OrbitPropagator:
@@ -54,3 +56,39 @@ class OrbitPropagator:
 
         self.rs = ys[:, :3]
         self.vs = ys[:, 3:]
+
+
+def task(r, v,
+         positions: SimpleQueue, names: SimpleQueue, body, time, dt, solver):
+
+    propagator = OrbitPropagator(r, v, time, dt, body)
+    propagator.propagate_orbit(solver)
+    positions.put(propagator.rs)
+    # ts.put(tle.satellite_name)
+
+
+def simulate_orbit_concurrently(list_of_parsed_tle, timespan, timestep, body=celestialBody.earth, solver='lsoda'):
+
+    positions = SimpleQueue()
+    names = SimpleQueue()
+    processes = []
+    for tle in list_of_parsed_tle:
+        print(tle.satellite_name)
+        print(f'inclination: {tle.inclination}')
+        r, v = coes2rv(*(tle2coes(tle, body.mu)[:-1]), body.mu)
+        p = Process(target=task, args=(r, v, positions, names, body, timespan, timestep, solver, ))
+        p.start()
+        processes.append(p)
+
+    rs = []
+    titles = []
+
+    for p in processes:
+        p.join()
+        # rs.append(positions.get())
+        # titles
+    # while not positions.empty():
+    #     rs.append(positions.get())
+        # titles.append(names.get())
+
+    return rs, titles
