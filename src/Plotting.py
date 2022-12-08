@@ -60,7 +60,11 @@ def plot_3d(r, body_rad, title='Orbit', show_plot=True):
         plt.savefig('figures/{}.png'.format(title), dpi=300)
 
 
-def plot_n_orbit_3d(rs, labels, body_rad, wire_frame=True, col=color_list, label_col=label_coloc_list, title='Orbits', show_plot=True):
+def plot_n_orbit_3d(rs, labels, body_rad, wire_frame=True, title='Orbits', show_plot=True, col=None, label_col=None):
+    if label_col is None:
+        label_col = label_coloc_list
+    if col is None:
+        col = color_list
     assert len(rs) == len(labels), "you should assign a label for each orbit"
 
     fig = plt.figure(figsize=(10, 10))

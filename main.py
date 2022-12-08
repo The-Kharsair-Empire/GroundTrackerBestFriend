@@ -126,8 +126,33 @@ def topic_4():  # CZ-6 debris
     plot_n_orbit_3d(rs, titles, body.radius)
 
 
+def topic_5():  # J2 perturbation
+    tle_raw = \
+        """
+ISS
+1 25544U 98067A   22339.03402137  .00010856  00000+0  19968-3 0  9994
+2 25544  51.6438 210.2304 0004354 127.5503 200.9328 15.49745241371670
+"""
+    body = cd.earth
+    tle_parsed = parse_raw_tle(tle_raw)
+    rs = []
+    titles = []
+
+    for tle in tle_parsed:
+        coes = tle2coes(tle, body.mu)
+        r, v = coes2rv(*coes[:-1], body.mu)
+        propagator = OrbitPropagator(r, v, 100 * 60 * 48, 100.0, body)
+        propagator.set_perturbation('J2')
+        propagator.propagate_orbit('lsoda')
+        rs.append(propagator.rs)
+        titles.append(tle.satellite_name)
+
+    plot_n_orbit_3d(rs, titles, body.radius, True, 'J2 perturbation')
+
+
 if __name__ == '__main__':
     # topic_1()
     # topic_2()
     # topic_3()
-    topic_4()
+    # topic_4()
+    topic_5()

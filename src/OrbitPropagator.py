@@ -18,16 +18,36 @@ class OrbitPropagator:
         self.n_steps = int(np.ceil(timespan / timestep))
         self.vs = None
         self.rs = None
+        self.perturbation = {
+            'J2': False,
+            'Aero': False,
+            'Moon_Grav': False
+        }
 
-    @staticmethod
-    def ode_two_body_acc(t, y, mu):
+    def set_perturbation(self, *args):
+        for arg in args:
+            if arg in self.perturbation:
+                self.perturbation[arg] = True
+
+    def ode_two_body_acc(self, t, y, mu):
         rx, ry, rz, vx, vy, vz = y
         r = np.array([rx, ry, rz])
 
         norm_r = np.linalg.norm(r)
 
-        ax, ay, az = -mu * r / norm_r ** 3
+        a = -mu * r / norm_r ** 3
 
+        if self.perturbation['J2']:
+            z2 = r[2] ** 2
+            r2 = norm_r ** 2
+            tx = r[0] / norm_r * (5 * z2 / r2 - 1)
+            ty = r[1] / norm_r * (5 * z2 / r2 - 1)
+            tz = r[2] / norm_r * (5 * z2 / r2 - 3)
+
+            a_j2 = (1.5 * self.body.j2 * self.body.mu * self.body.radius ** 2) / (norm_r ** 4) * np.array([tx, ty, tz])
+            a += a_j2
+
+        ax, ay, az = a
         return [vx, vy, vz, ax, ay, az]
 
     def propagate_orbit(self, integrator='lsoda'):
@@ -60,7 +80,6 @@ class OrbitPropagator:
 
 def task(r, v,
          positions: SimpleQueue, names: SimpleQueue, body, time, dt, solver):
-
     propagator = OrbitPropagator(r, v, time, dt, body)
     propagator.propagate_orbit(solver)
     positions.put(propagator.rs)
@@ -68,7 +87,6 @@ def task(r, v,
 
 
 def simulate_orbit_concurrently(list_of_parsed_tle, timespan, timestep, body=celestialBody.earth, solver='lsoda'):
-
     positions = SimpleQueue()
     names = SimpleQueue()
     processes = []
@@ -76,7 +94,7 @@ def simulate_orbit_concurrently(list_of_parsed_tle, timespan, timestep, body=cel
         print(tle.satellite_name)
         print(f'inclination: {tle.inclination}')
         r, v = coes2rv(*(tle2coes(tle, body.mu)[:-1]), body.mu)
-        p = Process(target=task, args=(r, v, positions, names, body, timespan, timestep, solver, ))
+        p = Process(target=task, args=(r, v, positions, names, body, timespan, timestep, solver,))
         p.start()
         processes.append(p)
 
@@ -89,6 +107,6 @@ def simulate_orbit_concurrently(list_of_parsed_tle, timespan, timestep, body=cel
         # titles
     # while not positions.empty():
     #     rs.append(positions.get())
-        # titles.append(names.get())
+    # titles.append(names.get())
 
     return rs, titles
