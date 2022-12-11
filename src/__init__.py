@@ -1,5 +1,5 @@
 from .OrbitPropagator import *
-from .Orbit import *
+from .OrbitAnalysis import *
 from .Plotting import *
 from .CelestialData import *
 from .TLE import *

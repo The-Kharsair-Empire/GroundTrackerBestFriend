@@ -1,7 +1,7 @@
 import datetime
 
 import numpy as np
-from src import plot_n_orbit_3d
+from src import plot_n_orbit_3d, plot_coes_over_time
 from src import CelestialData as cd
 from src import OrbitPropagator, simulate_orbit_concurrently
 from src import coes2rv
@@ -129,7 +129,7 @@ def topic_4():  # CZ-6 debris
 def topic_5():  # J2 perturbation
     tle_raw = \
         """
-ISS
+ISS (ZARYA)
 1 25544U 98067A   22339.03402137  .00010856  00000+0  19968-3 0  9994
 2 25544  51.6438 210.2304 0004354 127.5503 200.9328 15.49745241371670
 """
@@ -141,7 +141,7 @@ ISS
     for tle in tle_parsed:
         coes = tle2coes(tle, body.mu)
         r, v = coes2rv(*coes[:-1], body.mu)
-        propagator = OrbitPropagator(r, v, 100 * 60 * 48, 100.0, body)
+        propagator = OrbitPropagator(r, v, 3600 * 24 * 3, 100.0, body)
         propagator.enable_perturbation('J2')
         propagator.propagate_orbit('lsoda')
         rs.append(propagator.rs)
@@ -150,9 +150,29 @@ ISS
     plot_n_orbit_3d(rs, titles, body.radius, True, 'J2 perturbation')
 
 
+def topic_6():   # coes from r, v state vector
+    tle_raw = \
+        """
+ISS (ZARYA)
+1 25544U 98067A   22339.03402137  .00010856  00000+0  19968-3 0  9994
+2 25544  51.6438 210.2304 0004354 127.5503 200.9328 15.49745241371670
+"""
+    body = cd.earth
+    tle_parsed = parse_raw_tle(tle_raw)
+    coes = tle2coes(tle_parsed[0], body.mu)
+    r, v = coes2rv(*coes[:-1], body.mu)
+    propagator = OrbitPropagator(r, v, 3600 * 24 * 30, 100.0, body)
+    propagator.enable_perturbation('J2')
+    propagator.propagate_orbit('lsoda')
+    propagator.calculate_all_coes(deg=True)
+
+    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
+
+
 if __name__ == '__main__':
     # topic_1()
     # topic_2()
     # topic_3()
     # topic_4()
-    topic_5()
+    # topic_5()
+    topic_6()

@@ -113,3 +113,52 @@ def plot_n_orbit_3d(rs, labels, body_rad, wire_frame=True, title='Orbits', show_
         plt.show()
     else:
         plt.savefig('figures/{}.png'.format(title), dpi=300)
+
+
+def plot_coes_over_time(coes_array, ts, title='COEs vs Time', time_unit='hour', deg=True, show_plot=True, figsize=(16, 8)):
+    if time_unit not in ['hour', 'day', 'second', 'minute']:
+        raise ValueError("Supplied time_unit must be in one of['hour', 'day', 'second', 'minute']")
+    fig, axs = plt.subplots(nrows=2, ncols=3, figsize=figsize)
+    fig.suptitle(title, fontsize=20)
+
+    # x axis
+    if time_unit == 'hour':
+        ts /= 3600.0
+    elif time_unit == 'minute':
+        ts /= 60.0
+    elif time_unit == 'day':
+        ts /= 3600.0 * 24
+
+    if deg:
+        angle_unit = 'deg'
+    else:
+        angle_unit = 'rad'
+
+    axs[0, 0].plot(ts, coes_array[:, 5])
+    axs[0, 0].set_title('True Anomaly ({}) vs Time ({})'.format(angle_unit, time_unit))
+    axs[0, 0].grid(True)
+
+    axs[0, 1].plot(ts, coes_array[:, 3])
+    axs[0, 1].set_title('RAAN ({}) vs Time ({})'.format(angle_unit, time_unit))
+    axs[0, 1].grid(True)
+
+    axs[0, 2].plot(ts, coes_array[:, 4])
+    axs[0, 2].set_title('Argument of Periapsis ({}) vs Time ({})'.format(angle_unit, time_unit))
+    axs[0, 2].grid(True)
+
+    axs[1, 0].plot(ts, coes_array[:, 0])
+    axs[1, 0].set_title('Semi Major Axis (km) vs Time ({})'.format(time_unit))
+    axs[1, 0].grid(True)
+
+    axs[1, 1].plot(ts, coes_array[:, 1])
+    axs[1, 1].set_title('Eccentricity vs Time ({})'.format(time_unit))
+    axs[1, 1].grid(True)
+
+    axs[1, 2].plot(ts, coes_array[:, 2])
+    axs[1, 2].set_title('Inclination ({}) vs Time ({})'.format(angle_unit, time_unit))
+    axs[1, 2].grid(True)
+
+    if show_plot:
+        plt.show()
+    else:
+        plt.savefig('figures/{}.png'.format(title), dpi=300)

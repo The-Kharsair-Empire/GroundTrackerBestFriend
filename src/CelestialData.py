@@ -11,4 +11,4 @@ class CelestialBody:
 
 
 sun = CelestialBody('Sun', 1.989e30, 1.32712e11, 695700.0, 0.0)
-earth = CelestialBody('Earth', 5.972e24, 3.986e5, 6378.0, -0.001082635854)
+earth = CelestialBody('Earth', 5.972e24, 3.986e5, 6378.0, 0.001082635854)

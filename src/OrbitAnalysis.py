@@ -32,17 +32,20 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
     return r, v
 
 
-def rv2coes(r, v, body_mu, tp=False, t=None, deg=False):
+def rv2coes(r, v, body_mu, ta_in_time=False, t=None, deg=False):
+
     r_norm = np.linalg.norm(r)
     v_norm = np.linalg.norm(v)
 
     h = np.cross(r, v)
     h_norm = np.linalg.norm(h)
 
-    a = -body_mu / 2 * (v_norm ** 2 / 2 - body_mu / r_norm)
+    # a = -body_mu / 2 * (v_norm ** 2 / 2 - body_mu / r_norm)
 
     e_vector = np.cross(v, h) / body_mu - r / r_norm
+    e_vector_2 = ((np.linalg.norm(v) ** 2 - body_mu / r_norm) * r - np.dot(r, v) * v) / body_mu
     e = np.linalg.norm(e_vector)
+    e_2 = np.linalg.norm(e_vector_2)
 
     i = np.arccos(h[2] / h_norm)
 
@@ -62,15 +65,33 @@ def rv2coes(r, v, body_mu, tp=False, t=None, deg=False):
     if np.dot(r, v) < 0:
         ta = 2 * np.pi - ta
 
-    if tp:
+    a = r_norm * (1 + e * np.cos(ta)) / (1 - e ** 2)
+    # a_2 = r_norm * (1 + e * np.cos(ta)) / (1 - e ** 2)
+
+    # if not np.isclose(a, a_2):
+    #     print(f"two algorithm for semi-major axis doesn't match: {a} {a_2}")
+
+    if not np.isclose(e, e_2):
+        print(f"two algorithm for eccentricity doesn't match: {e} {e_2}")
+
+    tp = None
+    if ta_in_time:
         if t is None:
             raise ArithmeticError("Should provide time if you want the result with tp")
         E = ta2E(ta, e)
         tp = t - (E - e * np.sin(E)) / np.sqrt(body_mu / a ** 3)
 
-        return a, e, i, raan, aop, tp
+    if deg:
+        r2d = 180.0 / np.pi
+        i *= r2d
+        raan *= r2d
+        aop *= r2d
+        ta *= r2d
 
-    return a, e, i, raan, aop, ta
+    if ta_in_time:
+        return a, e, i, raan, aop, tp
+    else:
+        return a, e, i, raan, aop, ta
 
 
 def eci2perifocal(raan, i, aop):

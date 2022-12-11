@@ -5,7 +5,6 @@ import string
 class TLE:
 
     def _checksum(self, line):
-        # stolen from https://space.stackexchange.com/questions/5358/what-does-check-sum-tle-mean
         L = line.strip()
         cksum = 0
         for i in range(68):

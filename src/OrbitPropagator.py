@@ -3,7 +3,7 @@ from scipy.integrate import ode
 from multiprocessing import Process, SimpleQueue
 from src import CelestialData as celestialBody
 from .TLE import tle2coes
-from .Orbit import coes2rv
+from .OrbitAnalysis import coes2rv, rv2coes
 
 
 class OrbitPropagator:
@@ -18,6 +18,8 @@ class OrbitPropagator:
         self.n_steps = int(np.ceil(timespan / timestep))
         self.vs = None
         self.rs = None
+        self.coes = None
+        self.ts = None
         self.perturbation = {}
         if body == celestialBody.earth:
             self.perturbation['J2'] = False
@@ -52,7 +54,7 @@ class OrbitPropagator:
 
     def propagate_orbit(self, integrator='lsoda'):
         ys = np.zeros((self.n_steps, 6))
-        ts = np.zeros((self.n_steps, 1))
+        self.ts = np.zeros((self.n_steps, 1))
 
         if isinstance(self.r0, np.ndarray):
             y0 = self.r0.tolist() + self.v0.tolist()
@@ -70,12 +72,17 @@ class OrbitPropagator:
 
         while solver.successful() and current_step < self.n_steps:
             solver.integrate(solver.t + self.dt)
-            ts[current_step] = solver.t
+            self.ts[current_step] = solver.t
             ys[current_step] = np.array(solver.y)
             current_step += 1
 
         self.rs = ys[:, :3]
         self.vs = ys[:, 3:]
+
+    def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
+        self.coes = np.zeros((self.n_steps, 6))
+        for n in range(self.n_steps):
+            self.coes[n, :] = rv2coes(self.rs[n, :], self.vs[n, :], self.body.mu, deg=deg, ta_in_time=ta_in_time, t=t)
 
 
 def task(r, v,
