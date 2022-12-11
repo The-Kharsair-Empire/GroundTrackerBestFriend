@@ -18,13 +18,13 @@ class OrbitPropagator:
         self.n_steps = int(np.ceil(timespan / timestep))
         self.vs = None
         self.rs = None
-        self.perturbation = {
-            'J2': False,
-            'Aero': False,
-            'Moon_Grav': False
-        }
+        self.perturbation = {}
+        if body == celestialBody.earth:
+            self.perturbation['J2'] = False
+            self.perturbation['Aero'] = False
+            self.perturbation['Moon_Grav'] = False
 
-    def set_perturbation(self, *args):
+    def enable_perturbation(self, *args):
         for arg in args:
             if arg in self.perturbation:
                 self.perturbation[arg] = True

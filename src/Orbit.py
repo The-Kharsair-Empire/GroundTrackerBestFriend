@@ -22,7 +22,7 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
     r_norm = a * (1 - e ** 2) / (1 + e * math.cos(ta))
 
     r_perifocal = r_norm * np.array([math.cos(ta), math.sin(ta), 0])
-    v_perifocal = math.sqrt(body_mu * a) / r_norm * np.array([-math.sin(E), math.cos(E) * math.sqrt(1 - e**2), 0])
+    v_perifocal = math.sqrt(body_mu * a) / r_norm * np.array([-math.sin(E), math.cos(E) * math.sqrt(1 - e ** 2), 0])
 
     Cpe = perifocal2eci(raan, i, aop)
 
@@ -30,6 +30,47 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
     v = np.dot(Cpe, v_perifocal)
 
     return r, v
+
+
+def rv2coes(r, v, body_mu, tp=False, t=None, deg=False):
+    r_norm = np.linalg.norm(r)
+    v_norm = np.linalg.norm(v)
+
+    h = np.cross(r, v)
+    h_norm = np.linalg.norm(h)
+
+    a = -body_mu / 2 * (v_norm ** 2 / 2 - body_mu / r_norm)
+
+    e_vector = np.cross(v, h) / body_mu - r / r_norm
+    e = np.linalg.norm(e_vector)
+
+    i = np.arccos(h[2] / h_norm)
+
+    # n vector is pointing from center of body to equatorial ascending node
+    n_vector = np.cross([0, 0, 1], h)
+    n_norm = np.linalg.norm(n_vector)
+
+    raan = np.arccos(n_vector[0] / n_norm)  # n_vector[0] = np.dot([1, 0, 0], n_vector)
+    if n_vector[1] < 0:
+        raan = 2 * np.pi - raan
+
+    aop = np.arccos(np.dot(n_vector, e_vector) / (n_norm * e))
+    if e_vector[2] < 0:
+        aop = 2 * np.pi - aop
+
+    ta = np.arccos(np.dot(e_vector, r) / (e * r_norm))
+    if np.dot(r, v) < 0:
+        ta = 2 * np.pi - ta
+
+    if tp:
+        if t is None:
+            raise ArithmeticError("Should provide time if you want the result with tp")
+        E = ta2E(ta, e)
+        tp = t - (E - e * np.sin(E)) / np.sqrt(body_mu / a ** 3)
+
+        return a, e, i, raan, aop, tp
+
+    return a, e, i, raan, aop, ta
 
 
 def eci2perifocal(raan, i, aop):
@@ -76,4 +117,5 @@ def E2ta(E, e):
 
 
 def get_r_mag(a, e, E):
+    # position from semi-major axis, eccentricity and Eccentric anomaly
     return a * (1 - e * np.cos(E))

@@ -142,7 +142,7 @@ ISS
         coes = tle2coes(tle, body.mu)
         r, v = coes2rv(*coes[:-1], body.mu)
         propagator = OrbitPropagator(r, v, 100 * 60 * 48, 100.0, body)
-        propagator.set_perturbation('J2')
+        propagator.enable_perturbation('J2')
         propagator.propagate_orbit('lsoda')
         rs.append(propagator.rs)
         titles.append(tle.satellite_name)
