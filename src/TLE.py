@@ -3,7 +3,7 @@ import numpy as np
 import string
 from dataclasses import dataclass
 
-from .OrbitAnalysis import M2E, E2ta
+from .OrbitalFunctions import M2E, E2ta
 from .CelestialData import earth
 
 

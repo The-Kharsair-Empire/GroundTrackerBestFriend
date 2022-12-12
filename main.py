@@ -104,7 +104,7 @@ ORION
     plot_n_orbit_3d(rs, titles, body.radius)
 
 
-def topic_4():  # CZ-6 debris
+def topic_4():  # CZ-6 breakup debris
     file = open('file/CZ6A_DEB.txt', 'r')
     tle_raw = file.read()
     file.close()
@@ -169,10 +169,44 @@ ISS (ZARYA)
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
 
 
+def topic_7():   # sun synchronous orbit
+
+    body = cd.earth
+    r, v = coes2rv(body.radius + 600, 0.01, 63.435, 0.0, 0.0, 50.0, body.mu, deg=True)
+    propagator = OrbitPropagator(r, v, 3600 * 48, 100.0, body)
+    propagator.enable_perturbation('J2')
+    propagator.propagate_orbit('lsoda')
+    propagator.calculate_all_coes(deg=True)
+
+    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+
+
+def topic_8():   # air-drag
+
+    body = cd.earth
+    pe = 233 + body.radius
+    ap = 320 + body.radius
+    a = (pe + ap) / 2.0
+    e = (ap - pe) / (ap + pe)
+    raan = 340.0
+    i = 62.5
+    aop = 58.0
+    ta = 350.0
+
+    r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
+    propagator = OrbitPropagator(r, v, 3600 * 48, 100.0, body)
+    propagator.enable_perturbation('Aero', Cd=2.2, A=(1e-3 ** 2 / 4.0), mass=10.0)
+    propagator.propagate_orbit('lsoda')
+    propagator.calculate_all_coes(deg=True)
+
+    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+
+
 if __name__ == '__main__':
     # topic_1()
     # topic_2()
     # topic_3()
     # topic_4()
-    # topic_5()
-    topic_6()
+    topic_5()
+    # topic_6()
+    # topic_7()

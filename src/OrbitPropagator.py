@@ -3,7 +3,8 @@ from scipy.integrate import ode
 from multiprocessing import Process, SimpleQueue
 from src import CelestialData as celestialBody
 from .TLE import tle2coes
-from .OrbitAnalysis import coes2rv, rv2coes
+from .OrbitalFunctions import coes2rv, rv2coes
+from .Aerodynamics import calc_atm_density
 
 
 class OrbitPropagator:
@@ -25,15 +26,21 @@ class OrbitPropagator:
             self.perturbation['J2'] = False
             self.perturbation['Aero'] = False
             self.perturbation['Moon_Grav'] = False
+        self.pert_params = {}
 
-    def enable_perturbation(self, *args):
+    def enable_perturbation(self, *args, **kwargs):
         for arg in args:
             if arg in self.perturbation:
                 self.perturbation[arg] = True
+                if arg == 'Aero':
+                    self.pert_params['Cd'] = kwargs.get('Cd')
+                    self.pert_params['A'] = kwargs.get('A')
+                    self.pert_params['mass'] = kwargs.get('mass')  # mass of the spacecraft, in kg
 
     def ode_two_body_acc(self, t, y, mu):
         rx, ry, rz, vx, vy, vz = y
         r = np.array([rx, ry, rz])
+        v = np.array([vx, vy, vz])
 
         norm_r = np.linalg.norm(r)
 
@@ -48,6 +55,17 @@ class OrbitPropagator:
 
             a_j2 = (1.5 * self.body.j2 * self.body.mu * self.body.radius ** 2) / (norm_r ** 4) * np.array([tx, ty, tz])
             a += a_j2
+
+        if self.perturbation['Aero']:
+            # TODO: z should be geodetic altitude, this is geocentric, modify in the future
+            z = norm_r - self.body.radius
+            rho = calc_atm_density(z)
+            v_rel = v - np.cross(self.body.angular_velocity, r)
+
+            a_drag = -v_rel * np.linalg.norm(v_rel) * rho * self.pert_params['A'] * \
+                     self.pert_params['Cd'] / (2 * self.pert_params['mass'])
+
+            a += a_drag
 
         ax, ay, az = a
         return [vx, vy, vz, ax, ay, az]
