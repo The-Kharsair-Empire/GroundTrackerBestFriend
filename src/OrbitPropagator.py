@@ -11,6 +11,8 @@ class OrbitPropagator:
 
     def __init__(self, r0, v0, timespan, timestep, body=celestialBody.earth):
 
+        self.apoapsis = None
+        self.periapsis = None
         self.r0 = r0
         self.v0 = v0
         self.timespan = timespan
@@ -59,7 +61,7 @@ class OrbitPropagator:
         if self.perturbation['Aero']:
             # TODO: z should be geodetic altitude, this is geocentric, modify in the future
             z = norm_r - self.body.radius
-            rho = calc_atm_density(z)
+            rho = calc_atm_density(z, self.body)
             v_rel = v - np.cross(self.body.angular_velocity, r)
 
             a_drag = -v_rel * np.linalg.norm(v_rel) * rho * self.pert_params['A'] * \
@@ -93,14 +95,25 @@ class OrbitPropagator:
             self.ts[current_step] = solver.t
             ys[current_step] = np.array(solver.y)
             current_step += 1
+            if np.linalg.norm(ys[current_step-1, :3]) < self.body.radius:
+                print("trajectory hit parent body surface")
+                break
 
-        self.rs = ys[:, :3]
-        self.vs = ys[:, 3:]
+        self.rs = ys[:current_step, :3]
+        self.vs = ys[:current_step, 3:]
+        self.ts = self.ts[:current_step]
+        self.n_steps = current_step
 
     def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
         self.coes = np.zeros((self.n_steps, 6))
         for n in range(self.n_steps):
             self.coes[n, :] = rv2coes(self.rs[n, :], self.vs[n, :], self.body.mu, deg=deg, ta_in_time=ta_in_time, t=t)
+
+    def calculate_ap_pe(self):
+        if self.coes is None:
+            self.calculate_all_coes()
+        self.apoapsis = self.coes[:, 0] * (1 + self.coes[:, 1])
+        self.periapsis = self.coes[:, 0] * (1 - self.coes[:, 1])
 
 
 def task(r, v,

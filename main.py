@@ -1,7 +1,7 @@
 import datetime
 
 import numpy as np
-from src import plot_n_orbit_3d, plot_coes_over_time
+from src import plot_n_orbit_3d, plot_coes_over_time, plot_altitude_over_time, plot_apoapsis_n_periapsis_over_time
 from src import CelestialData as cd
 from src import OrbitPropagator, simulate_orbit_concurrently
 from src import coes2rv
@@ -184,8 +184,8 @@ def topic_7():   # sun synchronous orbit
 def topic_8():   # air-drag
 
     body = cd.earth
-    pe = 233 + body.radius
-    ap = 320 + body.radius
+    pe = 215 + body.radius
+    ap = 300 + body.radius
     a = (pe + ap) / 2.0
     e = (ap - pe) / (ap + pe)
     raan = 340.0
@@ -194,10 +194,18 @@ def topic_8():   # air-drag
     ta = 350.0
 
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
-    propagator = OrbitPropagator(r, v, 3600 * 48, 100.0, body)
+    propagator = OrbitPropagator(r, v, 3600 * 24 * 3, 100.0, body)
+    # propagator.enable_perturbation('J2')
     propagator.enable_perturbation('Aero', Cd=2.2, A=(1e-3 ** 2 / 4.0), mass=10.0)
     propagator.propagate_orbit('lsoda')
-    propagator.calculate_all_coes(deg=True)
+
+    plot_n_orbit_3d([propagator.rs], ['Spiral Re-entry'], body.radius)
+
+    plot_altitude_over_time(propagator.rs, propagator.ts, body)
+
+    propagator.calculate_ap_pe()
+
+    plot_apoapsis_n_periapsis_over_time(propagator.apoapsis, propagator.periapsis, propagator.ts, body)
 
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
@@ -207,6 +215,7 @@ if __name__ == '__main__':
     # topic_2()
     # topic_3()
     # topic_4()
-    topic_5()
+    # topic_5()
     # topic_6()
     # topic_7()
+    topic_8()
