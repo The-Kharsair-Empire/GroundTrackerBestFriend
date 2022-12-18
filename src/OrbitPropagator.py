@@ -3,14 +3,15 @@ from scipy.integrate import ode
 from multiprocessing import Process, SimpleQueue
 from src import CelestialData as celestialBody
 from .TLE import tle2coes
-from .OrbitalFunctions import coes2rv, rv2coes
+from .OrbitTools import coes2rv, rv2coes
 from .Aerodynamics import calc_atm_density
 
 
 class OrbitPropagator:
 
-    def __init__(self, r0, v0, timespan, timestep, body=celestialBody.earth):
+    def __init__(self, r0, v0, timespan, timestep, body=celestialBody.earth, initial_mass=10.0):
 
+        self.masses = None
         self.apoapsis = None
         self.periapsis = None
         self.r0 = r0
@@ -23,12 +24,18 @@ class OrbitPropagator:
         self.rs = None
         self.coes = None
         self.ts = None
-        self.perturbation = {}
+        self.perturbation = {
+            'Thrust': False
+        }
         if body == celestialBody.earth:
             self.perturbation['J2'] = False
             self.perturbation['Aero'] = False
             self.perturbation['Moon_Grav'] = False
-        self.pert_params = {}
+        self.pert_params = {
+            'mass': initial_mass  # kg, spacecraft initial mass
+        }
+
+        self.stop_conditions = {}
 
     def enable_perturbation(self, *args, **kwargs):
         for arg in args:
@@ -38,15 +45,33 @@ class OrbitPropagator:
                     self.pert_params['Cd'] = kwargs.get('Cd')
                     self.pert_params['A'] = kwargs.get('A')
                     self.pert_params['mass'] = kwargs.get('mass')  # mass of the spacecraft, in kg
+                if arg == 'Thrust':
+                    self.pert_params['thrust'] = kwargs.get('thrust')
+                    self.pert_params['isp'] = kwargs.get('isp')
+                    self.pert_params['direction'] = kwargs.get('direction')
+                    self.pert_params['mass'] = kwargs.get('mass')
 
-    def ode_two_body_acc(self, t, y, mu):
-        rx, ry, rz, vx, vy, vz = y
+    def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
+        self.coes = np.zeros((self.n_steps, 6))
+        for n in range(self.n_steps):
+            self.coes[n, :] = rv2coes(self.rs[n, :], self.vs[n, :], self.body.mu, deg=deg, ta_in_time=ta_in_time, t=t)
+
+    def calculate_ap_pe(self):
+        if self.coes is None:
+            self.calculate_all_coes()
+        self.apoapsis = self.coes[:, 0] * (1 + self.coes[:, 1])
+        self.periapsis = self.coes[:, 0] * (1 - self.coes[:, 1])
+
+    def ode_acc(self, t, y, mu):
+        rx, ry, rz, vx, vy, vz, m = y
         r = np.array([rx, ry, rz])
         v = np.array([vx, vy, vz])
 
         norm_r = np.linalg.norm(r)
 
         a = -mu * r / norm_r ** 3
+
+        mdot = 0
 
         if self.perturbation['J2']:
             z2 = r[2] ** 2
@@ -65,15 +90,18 @@ class OrbitPropagator:
             v_rel = v - np.cross(self.body.angular_velocity, r)
 
             a_drag = -v_rel * np.linalg.norm(v_rel) * rho * self.pert_params['A'] * \
-                     self.pert_params['Cd'] / (2 * self.pert_params['mass'])
+                     self.pert_params['Cd'] / (2 * m)
 
             a += a_drag
 
+        if self.perturbation['Thrust']:
+            a += self.pert_params['direction'] * (v / np.linalg.norm(v)) * self.pert_params['thrust'] / m / 1000.0  # km / s ** 2
+            mdot = -self.pert_params['thrust'] / self.pert_params['isp'] / 9.81
         ax, ay, az = a
-        return [vx, vy, vz, ax, ay, az]
+        return [vx, vy, vz, ax, ay, az, mdot]
 
     def propagate_orbit(self, integrator='lsoda'):
-        ys = np.zeros((self.n_steps, 6))
+        ys = np.zeros((self.n_steps, 7))
         self.ts = np.zeros((self.n_steps, 1))
 
         if isinstance(self.r0, np.ndarray):
@@ -81,11 +109,13 @@ class OrbitPropagator:
         else:
             y0 = self.r0 + self.v0
 
+        y0 += [self.pert_params['mass']]
+
         ys[0] = np.array(y0)  # set initial state
 
         current_step = 1
 
-        solver = ode(self.ode_two_body_acc)
+        solver = ode(self.ode_acc)
         solver.set_integrator(integrator)
         solver.set_initial_value(y0, 0)
         solver.set_f_params(self.body.mu)
@@ -95,25 +125,38 @@ class OrbitPropagator:
             self.ts[current_step] = solver.t
             ys[current_step] = np.array(solver.y)
             current_step += 1
-            if np.linalg.norm(ys[current_step-1, :3]) < self.body.radius:
-                print("trajectory hit parent body surface")
+            if self.check_stop_condition(ys, current_step):
                 break
 
         self.rs = ys[:current_step, :3]
-        self.vs = ys[:current_step, 3:]
+        self.vs = ys[:current_step, 3:6]
+        self.masses = ys[:current_step, 6]
         self.ts = self.ts[:current_step]
         self.n_steps = current_step
 
-    def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
-        self.coes = np.zeros((self.n_steps, 6))
-        for n in range(self.n_steps):
-            self.coes[n, :] = rv2coes(self.rs[n, :], self.vs[n, :], self.body.mu, deg=deg, ta_in_time=ta_in_time, t=t)
+    def check_stop_condition(self, ys, current_step) -> bool:
+        if np.linalg.norm(ys[current_step-1, :3]) < self.body.radius:
+            print("trajectory hit parent body surface")
+            return True
+        if 'min_alt' in self.stop_conditions.keys():
+            min_alt = self.stop_conditions['min_alt'].get('min_alt')
+            if np.linalg.norm(ys[current_step-1, :3]) < min_alt + self.body.radius:
+                print(f"altitude lower than minimum altitude {min_alt}")
+                return True
+        if 'max_alt' in self.stop_conditions.keys():
+            max_alt = self.stop_conditions['max_alt'].get('max_alt')
+            if np.linalg.norm(ys[current_step-1, :3]) > max_alt + self.body.radius:
+                print(f"altitude exceed msc altitude {max_alt}")
+        if 'new_soi' in self.stop_conditions.keys():
+            pass
+        if 'min_mass' in self.stop_conditions.keys():
+            pass
+        if 'more' in self.stop_conditions.keys():
+            pass
+        return False
 
-    def calculate_ap_pe(self):
-        if self.coes is None:
-            self.calculate_all_coes()
-        self.apoapsis = self.coes[:, 0] * (1 + self.coes[:, 1])
-        self.periapsis = self.coes[:, 0] * (1 - self.coes[:, 1])
+    def enable_stop_conditions(self, name, **kwargs):
+        self.stop_conditions[name] = kwargs
 
 
 def task(r, v,

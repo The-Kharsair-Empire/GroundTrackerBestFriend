@@ -1,7 +1,9 @@
 import datetime
 
 import numpy as np
-from src import plot_n_orbit_3d, plot_coes_over_time, plot_altitude_over_time, plot_apoapsis_n_periapsis_over_time
+from src import plot_n_orbit_3d \
+    , plot_coes_over_time, plot_altitude_over_time\
+    , plot_apoapsis_n_periapsis_over_time, plot_one_parameter
 from src import CelestialData as cd
 from src import OrbitPropagator, simulate_orbit_concurrently
 from src import coes2rv
@@ -150,7 +152,7 @@ ISS (ZARYA)
     plot_n_orbit_3d(rs, titles, body.radius, True, 'J2 perturbation')
 
 
-def topic_6():   # coes from r, v state vector
+def topic_6():  # coes from r, v state vector
     tle_raw = \
         """
 ISS (ZARYA)
@@ -169,7 +171,7 @@ ISS (ZARYA)
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
 
 
-def topic_7():   # sun synchronous orbit
+def topic_7():  # sun synchronous orbit
 
     body = cd.earth
     r, v = coes2rv(body.radius + 600, 0.01, 63.435, 0.0, 0.0, 50.0, body.mu, deg=True)
@@ -181,7 +183,7 @@ def topic_7():   # sun synchronous orbit
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
 
-def topic_8():   # air-drag
+def topic_8():  # air-drag
 
     body = cd.earth
     pe = 215 + body.radius
@@ -194,7 +196,7 @@ def topic_8():   # air-drag
     ta = 350.0
 
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
-    propagator = OrbitPropagator(r, v, 3600 * 24 * 3, 100.0, body)
+    propagator = OrbitPropagator(r, v, 3600 * 24 * 5, 100.0, body)
     # propagator.enable_perturbation('J2')
     propagator.enable_perturbation('Aero', Cd=2.2, A=(1e-3 ** 2 / 4.0), mass=10.0)
     propagator.propagate_orbit('lsoda')
@@ -210,6 +212,37 @@ def topic_8():   # air-drag
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
 
+def topic_9():  # thrust trajectory
+
+    body = cd.earth
+    a = body.radius + 20000
+    e = 0.6
+    raan = 200.0
+    i = 10.0
+    aop = 30.0
+    ta = 0.0
+
+    r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
+    propagator = OrbitPropagator(r, v, 3600 * 24, 100.0, body)
+    # propagator.enable_perturbation('J2')
+    propagator.enable_perturbation('Thrust', isp=4300.0, direction=1.0, thrust=0.127, mass=10.0)  # thrust in newton
+    propagator.enable_perturbation('Aero', Cd=2.2, A=(1e-3 ** 2 / 4.0), mass=10.0)
+    propagator.enable_perturbation('J2')
+    # propagator.enable_stop_conditions('min_alt', min_alt=500)
+    propagator.propagate_orbit('lsoda')
+
+    plot_altitude_over_time(propagator.rs, propagator.ts, body)
+
+    propagator.calculate_ap_pe()
+
+    plot_apoapsis_n_periapsis_over_time(propagator.apoapsis, propagator.periapsis, propagator.ts, body)
+
+    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+
+    plot_n_orbit_3d([propagator.rs], ['low thrust trajectory'], body.radius, True, 'Orbit')
+    # plot_one_parameter(propagator.masses, propagator.ts, 'mass', 'spacecraft mass change over time')
+
+
 if __name__ == '__main__':
     # topic_1()
     # topic_2()
@@ -218,4 +251,4 @@ if __name__ == '__main__':
     # topic_5()
     # topic_6()
     # topic_7()
-    topic_8()
+    topic_9()

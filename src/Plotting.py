@@ -172,6 +172,28 @@ def plot_coes_over_time(coes_array, ts, title='COEs vs Time', time_unit='hour', 
         plt.savefig('figures/{}.png'.format(title), dpi=dpi)
 
 
+def plot_one_parameter(ys, ts, ylabel, title='whatever', time_unit='hour', show_plot=True, figsize=(16, 8)
+                            , dpi=300):
+    if time_unit == 'hour':
+        ts /= 3600.0
+    elif time_unit == 'minute':
+        ts /= 60.0
+    elif time_unit == 'day':
+        ts /= 3600.0 * 24
+
+    plt.figure(figsize=figsize)
+    plt.plot(ts, ys, 'w')
+    plt.grid(True)
+    plt.xlabel(time_unit)
+    plt.ylabel(ylabel)
+    plt.title(title)
+
+    if show_plot:
+        plt.show()
+    else:
+        plt.savefig('figures/{}.png'.format(title), dpi=dpi)
+
+
 def plot_altitude_over_time(rs, ts, body, title="altitude over time", time_unit='hour', show_plot=True, figsize=(16, 8)
                             , dpi=300):
     altitudes = np.linalg.norm(rs, axis=1) - body.radius
