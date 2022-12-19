@@ -61,8 +61,8 @@ def plot_3d(r, body_rad, title='Orbit', show_plot=True, dpi=300):
         plt.savefig('figures/{}.png'.format(title), dpi=dpi)
 
 
-def plot_n_orbit_3d(rs, labels, body_rad, wire_frame=True, title='Orbits', show_plot=True, col=None, label_col_1=None
-                    , label_col_2=None, dpi=300):
+def plot_n_orbit_3d(rs, labels, body_rad, wire_frame=True, title='Orbits', highlight_endpoints=True, show_plot=True,
+                    col=None, label_col_1=None, label_col_2=None, dpi=300):
     if label_col_1 is None:
         label_col_1 = label_coloc_list_1
     if label_col_2 is None:
@@ -96,10 +96,11 @@ def plot_n_orbit_3d(rs, labels, body_rad, wire_frame=True, title='Orbits', show_
         r = rs[i]
         label = labels[i]
         ax.plot(r[:, 0], r[:, 1], r[:, 2], col[i % len(col)], label=f'{label}\'s Trajectory')
-        ax.plot([r[0, 0]], [r[0, 1]], [r[0, 2]], label_col_1[i % len(label_col_1)],
-                label=f'{label}\'s Initial Position')
-        ax.plot([r[-1, 0]], [r[-1, 1]], [r[-1, 2]], label_col_2[i % len(label_col_2)],
-                label=f'{label}\'s Final Position')
+        if highlight_endpoints:
+            ax.plot([r[0, 0]], [r[0, 1]], [r[0, 2]], label_col_1[i % len(label_col_1)],
+                    label=f'{label}\'s Initial Position')
+            ax.plot([r[-1, 0]], [r[-1, 1]], [r[-1, 2]], label_col_2[i % len(label_col_2)],
+                    label=f'{label}\'s Final Position')
         this_max_val = np.max(np.abs(r))
         if this_max_val > max_val:
             max_val = this_max_val

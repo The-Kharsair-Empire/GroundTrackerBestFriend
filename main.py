@@ -2,15 +2,16 @@ import datetime
 
 import numpy as np
 from src import plot_n_orbit_3d \
-    , plot_coes_over_time, plot_altitude_over_time\
+    , plot_coes_over_time, plot_altitude_over_time \
     , plot_apoapsis_n_periapsis_over_time, plot_one_parameter
 from src import CelestialData as cd
 from src import OrbitPropagator, simulate_orbit_concurrently
 from src import coes2rv
 from src import tle2coes, parse_raw_tle
+from src import spice_load_kernels, spice_get_spk_objects, tc2array, spice_get_ephemeris_data
 
 
-def topic_1():  # Two body equation of motion
+def task_1():  # Two body equation of motion
     body = cd.earth
     r_mag = body.radius + 500
     v_mag = np.sqrt(body.mu / r_mag)  # vis-viva equation for circular orbit
@@ -42,7 +43,7 @@ def topic_1():  # Two body equation of motion
     plot_n_orbit_3d([propagator_1.rs, propagator_2.rs], ['TLI', '500km-LEO'], body.radius)
 
 
-def topic_2():  # Classical Orbital Elements
+def task_2():  # Classical Orbital Elements
     body = cd.earth
 
     # ISS
@@ -62,7 +63,7 @@ def topic_2():  # Classical Orbital Elements
     plot_n_orbit_3d([propagator_1.rs, propagator_2.rs], ['ISS', 'GEO-sat'], body.radius)
 
 
-def topic_3():  # TLE
+def task_3():  # TLE
     tle_raw = \
         """
 ISS (ZARYA)
@@ -106,8 +107,8 @@ ORION
     plot_n_orbit_3d(rs, titles, body.radius)
 
 
-def topic_4():  # CZ-6 breakup debris
-    file = open('file/CZ6A_DEB.txt', 'r')
+def task_4():  # CZ-6 breakup debris
+    file = open('file/tle/CZ6A_DEB.txt', 'r')
     tle_raw = file.read()
     file.close()
     body = cd.earth
@@ -128,7 +129,7 @@ def topic_4():  # CZ-6 breakup debris
     plot_n_orbit_3d(rs, titles, body.radius)
 
 
-def topic_5():  # J2 perturbation
+def task_5():  # J2 perturbation
     tle_raw = \
         """
 ISS (ZARYA)
@@ -152,7 +153,7 @@ ISS (ZARYA)
     plot_n_orbit_3d(rs, titles, body.radius, True, 'J2 perturbation')
 
 
-def topic_6():  # coes from r, v state vector
+def task_6():  # coes from r, v state vector
     tle_raw = \
         """
 ISS (ZARYA)
@@ -171,7 +172,7 @@ ISS (ZARYA)
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
 
 
-def topic_7():  # sun synchronous orbit
+def task_7():  # sun synchronous orbit
 
     body = cd.earth
     r, v = coes2rv(body.radius + 600, 0.01, 63.435, 0.0, 0.0, 50.0, body.mu, deg=True)
@@ -183,7 +184,7 @@ def topic_7():  # sun synchronous orbit
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
 
-def topic_8():  # air-drag
+def task_8():  # air-drag
 
     body = cd.earth
     pe = 215 + body.radius
@@ -212,7 +213,7 @@ def topic_8():  # air-drag
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
 
-def topic_9():  # thrust trajectory
+def task_9():  # thrust trajectory
 
     body = cd.earth
     a = body.radius + 20000
@@ -225,7 +226,10 @@ def topic_9():  # thrust trajectory
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
     propagator = OrbitPropagator(r, v, 3600 * 24, 100.0, body)
     # propagator.enable_perturbation('J2')
-    propagator.enable_perturbation('Thrust', isp=4300.0, direction=1.0, thrust=0.127, mass=10.0)  # thrust in newton
+
+    # thrust in newton, mass in kg
+    propagator.enable_perturbation('Thrust', isp=4300.0, direction=1.0, thrust=0.127, mass=10.0)
+
     propagator.enable_perturbation('Aero', Cd=2.2, A=(1e-3 ** 2 / 4.0), mass=10.0)
     propagator.enable_perturbation('J2')
     # propagator.enable_stop_conditions('min_alt', min_alt=500)
@@ -243,12 +247,45 @@ def topic_9():  # thrust trajectory
     # plot_one_parameter(propagator.masses, propagator.ts, 'mass', 'spacecraft mass change over time')
 
 
+def task_10():  # visualize solar system from spice data
+
+    frame = 'ECLIPJ2000'
+    # frame = 'J2000' # Earth rotation axis as reference
+    body = cd.sun
+    observer = 'SUN'
+    spice_load_kernels([
+        'latest_leapseconds.tls.pc',
+        'de440s.bsp'
+    ])
+    ids, names, tcs_sec, tcs_cal = spice_get_spk_objects('de440s.bsp', True)
+    # ids, names, tcs_sec, tcs_cal = spice_get_spk_objects('de432s.bsp', True)
+    times = tc2array(tcs_sec[0], 100000)
+    names = list(filter(lambda x: 'BARYCENTER' in x, names))
+    rs = []
+
+    for name in names:
+        rs.append(spice_get_ephemeris_data(name, times, frame, observer))
+
+    plot_n_orbit_3d(rs, names, body.radius, False, 'solar system orbit', False)
+
+
+def task_11():
+    # TODO: propagate orbit for Pluto and Neptune in de432.bsp
+    pass
+
+
+def task_12():
+    # TODO: n-body propagation
+    pass
+
+
 if __name__ == '__main__':
-    # topic_1()
-    # topic_2()
-    # topic_3()
-    # topic_4()
-    # topic_5()
-    # topic_6()
-    # topic_7()
-    topic_9()
+    # task_1()
+    # task_2()
+    # task_3()
+    # task_4()
+    # task_5()
+    # task_6()
+    # task_7()
+    # task_9()
+    task_10()

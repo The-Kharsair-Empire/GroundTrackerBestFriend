@@ -4,3 +4,4 @@ from .Plotting import *
 from .CelestialData import *
 from .TLE import *
 from .Aerodynamics import *
+from .SPICE import *
