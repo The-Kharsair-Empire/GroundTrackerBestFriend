@@ -5,12 +5,18 @@ from src import CelestialData as celestialBody
 from .TLE import tle2coes
 from .OrbitTools import coes2rv, rv2coes
 from .Aerodynamics import calc_atm_density
+from .SPICE import spice_load_kernels, spice_get_ephemeris_data
+import spiceypy as spice
 
 
 class OrbitPropagator:
 
     def __init__(self, r0, v0, timespan, timestep, body=celestialBody.earth, initial_mass=10.0):
 
+        self.parent_body_spice_ephemeris = None
+        self.spice_tspan = None
+        self.n_bodies_ephemeris = None
+        self.spice_start_time = None
         self.masses = None
         self.apoapsis = None
         self.periapsis = None
@@ -24,13 +30,14 @@ class OrbitPropagator:
         self.rs = None
         self.coes = None
         self.ts = None
+
         self.perturbation = {
             'Thrust': False
         }
         if body == celestialBody.earth:
             self.perturbation['J2'] = False
             self.perturbation['Aero'] = False
-            self.perturbation['Moon_Grav'] = False
+            self.perturbation['N_bodies'] = False
         self.pert_params = {
             'mass': initial_mass  # kg, spacecraft initial mass
         }
@@ -50,6 +57,43 @@ class OrbitPropagator:
                     self.pert_params['isp'] = kwargs.get('isp')
                     self.pert_params['direction'] = kwargs.get('direction')
                     self.pert_params['mass'] = kwargs.get('mass')
+                if arg == 'N_bodies':
+
+                    spice_files = []
+                    # list of dictionary of {name -> str: [data -> CelestialBody, spice_file -> str]}
+                    self.pert_params['other_bodies'] = kwargs.get('other_bodies')
+                    self.pert_params['srp'] = kwargs.get('srp')  # Boolean
+                    self.pert_params['frame'] = kwargs.get('frame')
+                    if self.pert_params['srp']:
+                        self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
+                        spice_files.append(self.pert_params['spice_file'])
+
+                    for each_body in self.pert_params['other_bodies']:
+                        spice_files.append(self.pert_params['other_bodies'][each_body][1])
+                    spice_load_kernels(spice_files)
+                    self.spice_start_time = spice.utc2et(kwargs.get('date_0', '2020-12-3'))
+                    self.spice_tspan = np.linspace(self.spice_start_time, self.spice_start_time + self.timespan,
+                                                   self.n_steps)
+                    self.n_bodies_ephemeris = {
+                        each_body: spice_get_ephemeris_data(each_body, self.spice_tspan,
+                                                            self.pert_params['frame'], self.body.name)
+                        for each_body in self.pert_params['other_bodies']
+                    }
+                    if self.pert_params['srp']:
+                        self.parent_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
+                                                                                    self.pert_params['frame'], 'SUN')
+
+                if arg == 'Srp':
+                    spice_files = []
+                    self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
+                    spice_files.append(self.pert_params['spice_file'])
+                    spice_load_kernels(spice_files)
+
+                    self.spice_start_time = spice.utc2et(kwargs.get('date_0', '2020-12-3'))
+                    self.spice_tspan = np.linspace(self.spice_start_time, self.spice_start_time + self.timespan,
+                                                   self.n_steps)
+                    self.parent_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
+                                                                                self.pert_params['frame'], 'SUN')
 
     def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
         self.coes = np.zeros((self.n_steps, 6))
@@ -90,14 +134,21 @@ class OrbitPropagator:
             v_rel = v - np.cross(self.body.angular_velocity, r)
 
             a_drag = -v_rel * np.linalg.norm(v_rel) * rho * self.pert_params['A'] * \
-                     self.pert_params['Cd'] / (2 * m)
+                self.pert_params['Cd'] / (2 * m)
 
             a += a_drag
 
         if self.perturbation['Thrust']:
-            a += self.pert_params['direction'] * (v / np.linalg.norm(v)) * self.pert_params['thrust'] / m / 1000.0  # km / s ** 2
+            a += self.pert_params['direction'] * (v / np.linalg.norm(v)) * self.pert_params[
+                'thrust'] / m / 1000.0  # km / s ** 2
             mdot = -self.pert_params['thrust'] / self.pert_params['isp'] / 9.81
         ax, ay, az = a
+
+        if self.perturbation['N_bodies']:
+            for each_body in self.pert_params['other_bodies']:
+                # TODO: implement n body perturbation based on
+                pass
+
         return [vx, vy, vz, ax, ay, az, mdot]
 
     def propagate_orbit(self, integrator='lsoda'):
@@ -135,17 +186,17 @@ class OrbitPropagator:
         self.n_steps = current_step
 
     def check_stop_condition(self, ys, current_step) -> bool:
-        if np.linalg.norm(ys[current_step-1, :3]) < self.body.radius:
+        if np.linalg.norm(ys[current_step - 1, :3]) < self.body.radius:
             print("trajectory hit parent body surface")
             return True
         if 'min_alt' in self.stop_conditions.keys():
             min_alt = self.stop_conditions['min_alt'].get('min_alt')
-            if np.linalg.norm(ys[current_step-1, :3]) < min_alt + self.body.radius:
+            if np.linalg.norm(ys[current_step - 1, :3]) < min_alt + self.body.radius:
                 print(f"altitude lower than minimum altitude {min_alt}")
                 return True
         if 'max_alt' in self.stop_conditions.keys():
             max_alt = self.stop_conditions['max_alt'].get('max_alt')
-            if np.linalg.norm(ys[current_step-1, :3]) > max_alt + self.body.radius:
+            if np.linalg.norm(ys[current_step - 1, :3]) > max_alt + self.body.radius:
                 print(f"altitude exceed msc altitude {max_alt}")
         if 'new_soi' in self.stop_conditions.keys():
             pass

@@ -276,7 +276,22 @@ def task_11():
 
 def task_12():
     # TODO: n-body propagation
-    pass
+    body = cd.earth
+    a = body.radius + 20000
+    e = 0.6
+    raan = 200.0
+    i = 10.0
+    aop = 30.0
+    ta = 0.0
+
+    r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
+
+    frame = 'ECLIPJ2000'
+    propagator = OrbitPropagator(r, v, 3600 * 24, 100.0, body)
+    propagator.enable_perturbation('N_bodies',
+                                   other_bodies={'MOON': (cd.moon, 'de440s.bsp')},
+                                   srp=True, frame=frame, spice_file='de440s.bsp',
+                                   date_0='2019-12-3')
 
 
 if __name__ == '__main__':
@@ -288,4 +303,5 @@ if __name__ == '__main__':
     # task_6()
     # task_7()
     # task_9()
-    task_10()
+    # task_10()
+    task_12()

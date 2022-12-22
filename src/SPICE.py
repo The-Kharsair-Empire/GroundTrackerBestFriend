@@ -2,6 +2,9 @@ import spiceypy as spice
 import numpy as np
 import os
 
+loaded_spice_kernel = []
+default_lsk_kernel = "latest_leapseconds.tls.pc"
+
 
 def spice_load_kernels(kernel_files: list[str]):
     assert kernel_files is not None, "Kernel file is None"
@@ -11,8 +14,14 @@ def spice_load_kernels(kernel_files: list[str]):
 
     assert len(kernel_files) > 0 and isinstance(kernel_files[0], str), "Kernel files invalid"
 
+    kernel_files.append(default_lsk_kernel)
+
     for kernel in kernel_files:
-        spice.furnsh(os.path.join(os.path.dirname(__file__), '..', 'file', 'spice_data', kernel))
+        if kernel not in loaded_spice_kernel:
+            spice.furnsh(os.path.join(os.path.dirname(__file__), '..', 'file', 'spice_data', kernel))
+            loaded_spice_kernel.append(kernel)
+        else:
+            print(kernel, "is loaded, skipping")
 
 
 def spice_get_spk_objects(filename, verbose=False):
