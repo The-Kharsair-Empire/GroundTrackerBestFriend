@@ -276,22 +276,57 @@ def task_11():
 
 def task_12():
     # TODO: n-body propagation
+
     body = cd.earth
-    a = body.radius + 20000
-    e = 0.6
-    raan = 200.0
-    i = 10.0
-    aop = 30.0
+    timespan = 3600 * 24 * 100.0
+    # file = open('file/tle/ISS.txt', 'r')
+    # tle_raw = file.read()
+    # file.close()
+    # iss_tle = parse_raw_tle(tle_raw)[0]
+    # iss_coes = tle2coes(iss_tle, body.mu)
+    # r, v = coes2rv(*iss_coes[:-1], body.mu)
+    rs = []
+    titles = ['GEO Sat', 'Moon']
+    #
+    frame = 'ECLIPJ2000'
+    date_0 = '2020-02-23'
+    # propagator = OrbitPropagator(r, v, timespan, 400.0, body)
+    # propagator.enable_perturbation('N_bodies',
+    #                                srp=True, frame=frame, spice_file='de440s.bsp',
+    #                                date_0='2020-02-23',
+    #                                other_bodies={
+    #                                    'MOON': (cd.moon, 'de440s.bsp')
+    #                                })
+    # propagator.propagate_orbit('dopri5')
+    # propagator.calculate_all_coes(deg=True)
+    #
+    # plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+    # rs.append(propagator.rs)
+
+    a = 42164.0
+    e = 0.001
+    raan = 100.0
+    i = 0.1
+    aop = 200.0
     ta = 0.0
 
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
 
-    frame = 'ECLIPJ2000'
-    propagator = OrbitPropagator(r, v, 3600 * 24, 100.0, body)
+    propagator = OrbitPropagator(r, v, timespan, 5000.0, body)
     propagator.enable_perturbation('N_bodies',
-                                   other_bodies={'MOON': (cd.moon, 'de440s.bsp')},
-                                   srp=True, frame=frame, spice_file='de440s.bsp',
-                                   date_0='2019-12-3')
+                                   frame=frame, spice_file='de440s.bsp',
+                                   date_0=date_0,
+                                   other_bodies={
+                                       'MOON': (cd.moon, 'de440s.bsp')
+                                   })
+    propagator.propagate_orbit('dopri5')
+    propagator.calculate_all_coes(deg=True)
+
+    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
+    rs.append(propagator.rs)
+    rs.append(propagator.n_bodies_ephemeris['MOON'][:, :3])
+
+    plot_n_orbit_3d(rs, titles, body.radius, True, 'comparing Moon perturbation to objects orbiting Earth', True)
 
 
 if __name__ == '__main__':

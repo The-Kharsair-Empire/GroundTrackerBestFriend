@@ -13,7 +13,9 @@ class OrbitPropagator:
 
     def __init__(self, r0, v0, timespan, timestep, body=celestialBody.earth, initial_mass=10.0):
 
-        self.parent_body_spice_ephemeris = None
+        self.coes_rel = None
+        self.current_step = 0
+        self.main_body_spice_ephemeris = None
         self.spice_tspan = None
         self.n_bodies_ephemeris = None
         self.spice_start_time = None
@@ -62,7 +64,7 @@ class OrbitPropagator:
                     spice_files = []
                     # list of dictionary of {name -> str: [data -> CelestialBody, spice_file -> str]}
                     self.pert_params['other_bodies'] = kwargs.get('other_bodies')
-                    self.pert_params['srp'] = kwargs.get('srp')  # Boolean
+                    self.pert_params['srp'] = kwargs.get('srp', False)  # Boolean
                     self.pert_params['frame'] = kwargs.get('frame')
                     if self.pert_params['srp']:
                         self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
@@ -80,8 +82,8 @@ class OrbitPropagator:
                         for each_body in self.pert_params['other_bodies']
                     }
                     if self.pert_params['srp']:
-                        self.parent_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
-                                                                                    self.pert_params['frame'], 'SUN')
+                        self.main_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
+                                                                                  self.pert_params['frame'], 'SUN')
 
                 if arg == 'Srp':
                     spice_files = []
@@ -92,13 +94,15 @@ class OrbitPropagator:
                     self.spice_start_time = spice.utc2et(kwargs.get('date_0', '2020-12-3'))
                     self.spice_tspan = np.linspace(self.spice_start_time, self.spice_start_time + self.timespan,
                                                    self.n_steps)
-                    self.parent_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
-                                                                                self.pert_params['frame'], 'SUN')
+                    self.main_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
+                                                                              self.pert_params['frame'], 'SUN')
 
     def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
         self.coes = np.zeros((self.n_steps, 6))
         for n in range(self.n_steps):
             self.coes[n, :] = rv2coes(self.rs[n, :], self.vs[n, :], self.body.mu, deg=deg, ta_in_time=ta_in_time, t=t)
+            
+        self.coes_rel = self.coes - self.coes[0, :]
 
     def calculate_ap_pe(self):
         if self.coes is None:
@@ -134,7 +138,7 @@ class OrbitPropagator:
             v_rel = v - np.cross(self.body.angular_velocity, r)
 
             a_drag = -v_rel * np.linalg.norm(v_rel) * rho * self.pert_params['A'] * \
-                self.pert_params['Cd'] / (2 * m)
+                     self.pert_params['Cd'] / (2 * m)
 
             a += a_drag
 
@@ -145,10 +149,26 @@ class OrbitPropagator:
         ax, ay, az = a
 
         if self.perturbation['N_bodies']:
+            # TODO: I think either here or the enable_perturbation has something implemented wrongly.
+            # TODO: the behaviour of moon perturbation doesn't seem right.
             for each_body in self.pert_params['other_bodies']:
-                # TODO: implement n body perturbation based on
-                pass
+                # vector from central body to nth perturbing body
+                r_cb2body = self.n_bodies_ephemeris[each_body][self.current_step, :3]
 
+                # vector from orbiting object to the nth perturbing body
+                r_sat2body = r_cb2body - r
+
+                perts = self.pert_params['other_bodies'][each_body][0].mu * \
+                     (r_sat2body / np.linalg.norm(r_sat2body) ** 3 - r_cb2body / np.linalg.norm(r_cb2body) ** 3)
+                # print(f"magnitude of pert caused by moon in this step: {np.linalg.norm(perts)}")
+                # print(f"body mu: {self.pert_params['other_bodies'][each_body][0].mu}")
+                # print(f"sat2body r : {r_sat2body}")
+                # print(f"cb2body r : {r_cb2body}")
+                # print(f"r : {r}")
+                # print()
+                # assert (np.isclose(r + r_sat2body, r_cb2body)).all(),\
+                #     f"{r}\n{r_sat2body}\n{r_cb2body}"
+                a += perts
         return [vx, vy, vz, ax, ay, az, mdot]
 
     def propagate_orbit(self, integrator='lsoda'):
@@ -164,26 +184,26 @@ class OrbitPropagator:
 
         ys[0] = np.array(y0)  # set initial state
 
-        current_step = 1
+        self.current_step = 1
 
         solver = ode(self.ode_acc)
         solver.set_integrator(integrator)
         solver.set_initial_value(y0, 0)
         solver.set_f_params(self.body.mu)
 
-        while solver.successful() and current_step < self.n_steps:
+        while solver.successful() and self.current_step < self.n_steps:
             solver.integrate(solver.t + self.dt)
-            self.ts[current_step] = solver.t
-            ys[current_step] = np.array(solver.y)
-            current_step += 1
-            if self.check_stop_condition(ys, current_step):
+            self.ts[self.current_step] = solver.t
+            ys[self.current_step] = np.array(solver.y)
+            self.current_step += 1
+            if self.check_stop_condition(ys, self.current_step):
                 break
 
-        self.rs = ys[:current_step, :3]
-        self.vs = ys[:current_step, 3:6]
-        self.masses = ys[:current_step, 6]
-        self.ts = self.ts[:current_step]
-        self.n_steps = current_step
+        self.rs = ys[:self.current_step, :3]
+        self.vs = ys[:self.current_step, 3:6]
+        self.masses = ys[:self.current_step, 6]
+        self.ts = self.ts[:self.current_step]
+        self.n_steps = self.current_step
 
     def check_stop_condition(self, ys, current_step) -> bool:
         if np.linalg.norm(ys[current_step - 1, :3]) < self.body.radius:

@@ -65,3 +65,16 @@ def tc2array(tcs, steps):
     arr[:, 0] = np.linspace(tcs[0], tcs[1], steps)
     return arr
 
+
+def rv2coes(state, et, mu, deg=False):
+    rp, e, i, raan, aop, ma, t0, mu, ta, a, T = spice.oscltx(state, et, mu)
+
+    if deg:
+        r2d = 180.0 / np.pi
+        i *= r2d
+        ta *= r2d
+        aop *= r2d
+        raan *= r2d
+
+    return a, e, i, raan, aop, ta
+

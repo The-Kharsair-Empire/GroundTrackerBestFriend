@@ -53,6 +53,16 @@ def rv2coes(r, v, body_mu, ta_in_time=False, t=None, deg=False):
     n_vector = np.cross([0, 0, 1], h)
     n_norm = np.linalg.norm(n_vector)
 
+    if np.isclose(n_norm, 0):
+        print("something wrong with n_norm, too close to 0")
+        print("because h is too close to z [0, 0, 1], the angle between them almost 0, orbital plane too equatorial")
+        print(f"angle between them: {np.arccos(np.dot([0, 0, 1], h) / (np.linalg.norm([0, 0, 1]) * h_norm))}")
+        print(f"checking n_vector: {n_vector}")
+        print(f"checking h: {h}")
+        print(f"checking r: {r}")
+        print(f"checking v: {v}")
+        n_norm = 0.01
+
     raan = np.arccos(n_vector[0] / n_norm)  # n_vector[0] = np.dot([1, 0, 0], n_vector)
     if n_vector[1] < 0:
         raan = 2 * np.pi - raan
