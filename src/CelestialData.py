@@ -21,9 +21,10 @@ class CelestialBody(NoneRefersDefault):
     zs: np.ndarray = DefaultVal(np.zeros(3))
     dist2parent: float = DefaultVal(0.0)
     orbital_period: float = DefaultVal(0.0)
+    G1: float = DefaultVal(0.0)  # kg-km^3
 
 
-sun = CelestialBody('Sun', 1.989e30, 1.32712e11, 695700.0)
+sun = CelestialBody('Sun', 1.989e30, 1.32712e11, 695700.0, G1=1e8)
 
 earth = CelestialBody('Earth', 5.972e24, 3.986e5, 6378.0, 0.001082635854
                       , np.array([0.0, 0.0, 72.9211e-6])

@@ -330,7 +330,39 @@ def task_12():
 
 
 def task_13():  # solar radiation pressure
-    pass
+    frame = 'ECLIPJ2000'
+    date_0 = '2020-02-23'
+
+    body = cd.earth
+    timespan = 3600 * 24 * 360.0
+
+    rs = []
+    titles = ['Molniya Orbit']
+
+    a = 42164.0
+    e = 0.81818
+    raan = 298.22
+    i = 28.5
+    aop = 357.857
+    ta = 180.0
+
+    r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
+
+    propagator = OrbitPropagator(r, v, timespan, 500.0, body)
+    propagator.enable_perturbation('SRP',
+                                   frame=frame, spice_file='de440s.bsp',
+                                   date_0=date_0,
+                                   CR=1.0, A_srp=30.0e-3 * 35e-3,  # area in km^3
+                                   G1=cd.sun.G1,
+                                   mass=6
+                                   )
+    propagator.propagate_orbit('lsoda')
+    propagator.calculate_all_coes(deg=True)
+
+    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
+    rs.append(propagator.rs)
+
+    plot_n_orbit_3d(rs, titles, body.radius, True, 'Spacecraft in solar radiation perturbation', False)
 
 
 if __name__ == '__main__':
@@ -343,5 +375,5 @@ if __name__ == '__main__':
     # task_7()
     # task_9()
     # task_10()
-    task_12()
-    # task_13()
+    # task_12()
+    task_13()

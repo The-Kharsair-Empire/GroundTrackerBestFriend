@@ -87,7 +87,12 @@ class OrbitPropagator:
                     #                                                               self.pert_params['frame'], 'SUN')
 
                 if arg == 'SRP':
+                    # TODO: some unexpected results in plot, maybe the spice time isn't right?
                     spice_files = []
+                    self.pert_params['mass'] = kwargs.get('mass', 10.0)
+                    self.pert_params['CR'] = kwargs.get('CR')   # coefficient of reflection
+                    self.pert_params['A_srp'] = kwargs.get('A_srp')  # area, for area to mass ratio
+                    self.pert_params['G1'] = kwargs.get('G1')   # related to solar radiation intensity
                     self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
                     spice_files.append(self.pert_params['spice_file'])
                     spice_load_kernels(spice_files)
@@ -96,7 +101,7 @@ class OrbitPropagator:
                     self.spice_tspan = np.linspace(self.spice_start_time, self.spice_start_time + self.timespan,
                                                    self.n_steps)
                     self.main_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
-                                                                              self.pert_params['frame'], 'SUN')
+                                                                              kwargs.get('frame'), 'SUN')
 
     def calculate_all_coes(self, deg=True, ta_in_time=False, t=None):
         self.coes = np.zeros((self.n_steps, 6))
@@ -149,7 +154,6 @@ class OrbitPropagator:
             mdot = -self.pert_params['thrust'] / self.pert_params['isp'] / 9.81
 
         if self.perturbation['N_bodies']:
-            # TODO: problem was that you put ax, ay, az = a before this condition.
             for each_body in self.pert_params['other_bodies']:
                 # vector from central body to nth perturbing body
                 r_cb2body = self.n_bodies_ephemeris[each_body][self.current_step, :3]
@@ -159,14 +163,7 @@ class OrbitPropagator:
 
                 nth_body_acc = self.pert_params['other_bodies'][each_body][0].mu * \
                      (r_sat2body / np.linalg.norm(r_sat2body) ** 3 - r_cb2body / np.linalg.norm(r_cb2body) ** 3)
-                # print(f"magnitude of pert caused by moon in this step: {np.linalg.norm(perts)}")
-                # print(f"body mu: {self.pert_params['other_bodies'][each_body][0].mu}")
-                # print(f"sat2body r : {r_sat2body}")
-                # print(f"cb2body r : {r_cb2body}")
-                # print(f"r : {r}")
-                # print()
-                # assert (np.isclose(r + r_sat2body, r_cb2body)).all(),\
-                #     f"{r}\n{r_sat2body}\n{r_cb2body}"
+
                 a += nth_body_acc
 
         if self.perturbation['SRP']:
