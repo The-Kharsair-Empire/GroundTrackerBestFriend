@@ -40,6 +40,7 @@ class OrbitPropagator:
             self.perturbation['J2'] = False
             self.perturbation['Aero'] = False
             self.perturbation['N_bodies'] = False
+            self.perturbation['SRP'] = False
         self.pert_params = {
             'mass': initial_mass  # kg, spacecraft initial mass
         }
@@ -64,11 +65,11 @@ class OrbitPropagator:
                     spice_files = []
                     # list of dictionary of {name -> str: [data -> CelestialBody, spice_file -> str]}
                     self.pert_params['other_bodies'] = kwargs.get('other_bodies')
-                    self.pert_params['srp'] = kwargs.get('srp', False)  # Boolean
+                    # self.pert_params['srp'] = kwargs.get('srp', False)  # Boolean
                     self.pert_params['frame'] = kwargs.get('frame')
-                    if self.pert_params['srp']:
-                        self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
-                        spice_files.append(self.pert_params['spice_file'])
+                    # if self.pert_params['srp']:
+                    #     self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
+                    #     spice_files.append(self.pert_params['spice_file'])
 
                     for each_body in self.pert_params['other_bodies']:
                         spice_files.append(self.pert_params['other_bodies'][each_body][1])
@@ -81,11 +82,11 @@ class OrbitPropagator:
                                                             self.pert_params['frame'], self.body.name)
                         for each_body in self.pert_params['other_bodies']
                     }
-                    if self.pert_params['srp']:
-                        self.main_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
-                                                                                  self.pert_params['frame'], 'SUN')
+                    # if self.pert_params['srp']:
+                    #     self.main_body_spice_ephemeris = spice_get_ephemeris_data(self.body.name, self.spice_tspan,
+                    #                                                               self.pert_params['frame'], 'SUN')
 
-                if arg == 'Srp':
+                if arg == 'SRP':
                     spice_files = []
                     self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
                     spice_files.append(self.pert_params['spice_file'])
@@ -146,11 +147,9 @@ class OrbitPropagator:
             a += self.pert_params['direction'] * (v / np.linalg.norm(v)) * self.pert_params[
                 'thrust'] / m / 1000.0  # km / s ** 2
             mdot = -self.pert_params['thrust'] / self.pert_params['isp'] / 9.81
-        ax, ay, az = a
 
         if self.perturbation['N_bodies']:
-            # TODO: I think either here or the enable_perturbation has something implemented wrongly.
-            # TODO: the behaviour of moon perturbation doesn't seem right.
+            # TODO: problem was that you put ax, ay, az = a before this condition.
             for each_body in self.pert_params['other_bodies']:
                 # vector from central body to nth perturbing body
                 r_cb2body = self.n_bodies_ephemeris[each_body][self.current_step, :3]
@@ -158,7 +157,7 @@ class OrbitPropagator:
                 # vector from orbiting object to the nth perturbing body
                 r_sat2body = r_cb2body - r
 
-                perts = self.pert_params['other_bodies'][each_body][0].mu * \
+                nth_body_acc = self.pert_params['other_bodies'][each_body][0].mu * \
                      (r_sat2body / np.linalg.norm(r_sat2body) ** 3 - r_cb2body / np.linalg.norm(r_cb2body) ** 3)
                 # print(f"magnitude of pert caused by moon in this step: {np.linalg.norm(perts)}")
                 # print(f"body mu: {self.pert_params['other_bodies'][each_body][0].mu}")
@@ -168,7 +167,18 @@ class OrbitPropagator:
                 # print()
                 # assert (np.isclose(r + r_sat2body, r_cb2body)).all(),\
                 #     f"{r}\n{r_sat2body}\n{r_cb2body}"
-                a += perts
+                a += nth_body_acc
+
+        if self.perturbation['SRP']:
+            r_sun2sat = self.main_body_spice_ephemeris[self.current_step, :3] + r
+
+            solar_rad_acc = (1 + self.pert_params['CR']) * self.pert_params['G1'] * self.pert_params['A_srp'] \
+                            / m / np.linalg.norm(r_sun2sat) ** 3 * r_sun2sat
+
+            a += solar_rad_acc
+
+        ax, ay, az = a
+
         return [vx, vy, vz, ax, ay, az, mdot]
 
     def propagate_orbit(self, integrator='lsoda'):

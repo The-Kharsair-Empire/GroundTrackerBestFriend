@@ -286,7 +286,7 @@ def task_12():
     # iss_coes = tle2coes(iss_tle, body.mu)
     # r, v = coes2rv(*iss_coes[:-1], body.mu)
     rs = []
-    titles = ['GEO Sat', 'Moon']
+    titles = ['Object in High Orbit', 'Moon']
     #
     frame = 'ECLIPJ2000'
     date_0 = '2020-02-23'
@@ -303,7 +303,7 @@ def task_12():
     # plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
     # rs.append(propagator.rs)
 
-    a = 42164.0
+    a = 42164.0 * 7
     e = 0.001
     raan = 100.0
     i = 0.1
@@ -329,6 +329,10 @@ def task_12():
     plot_n_orbit_3d(rs, titles, body.radius, True, 'comparing Moon perturbation to objects orbiting Earth', True)
 
 
+def task_13():  # solar radiation pressure
+    pass
+
+
 if __name__ == '__main__':
     # task_1()
     # task_2()
@@ -340,3 +344,4 @@ if __name__ == '__main__':
     # task_9()
     # task_10()
     task_12()
+    # task_13()
