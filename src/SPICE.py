@@ -66,7 +66,7 @@ def tc2array(tcs, steps):
     return arr
 
 
-def rv2coes(state, et, mu, deg=False):
+def spice_rv2coes(state, et, mu, deg=False):
     rp, e, i, raan, aop, ma, t0, mu, ta, a, T = spice.oscltx(state, et, mu)
 
     if deg:

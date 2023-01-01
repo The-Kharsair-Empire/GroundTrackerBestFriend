@@ -9,6 +9,8 @@ from src import OrbitPropagator, simulate_orbit_concurrently
 from src import coes2rv
 from src import tle2coes, parse_raw_tle
 from src import spice_load_kernels, spice_get_spk_objects, tc2array, spice_get_ephemeris_data
+from src import get_starman
+import spiceypy as spice
 
 
 def task_1():  # Two body equation of motion
@@ -250,6 +252,7 @@ def task_9():  # thrust trajectory
 def task_10():  # visualize solar system from spice data
 
     frame = 'ECLIPJ2000'
+    frame = 'J2000'
     # frame = 'J2000' # Earth rotation axis as reference
     body = cd.sun
     observer = 'SUN'
@@ -365,6 +368,40 @@ def task_13():  # solar radiation pressure
     plot_n_orbit_3d(rs, titles, body.radius, True, 'Spacecraft in solar radiation perturbation', False)
 
 
+def task_14():  # test JPL horizon system api
+    starman = get_starman()[0]
+    r = [starman['x'], starman['y'], starman['z']]
+    v = [starman['vx'], starman['vy'], starman['vz']]
+
+    date_0 = '2018-02-08'
+    date_f = '2020-03-15'
+
+    titles = ['Mercury', 'Venus', 'Earth', 'Mars', 'Tesla Roadster']
+    frame = 'ECLIPJ2000'
+    observer = 'SOLAR SYSTEM BARYCENTER'
+    time_step = 1000
+    spice_load_kernels([
+        'latest_leapseconds.tls.pc',
+        'de440s.bsp'
+    ])
+    t0 = spice.utc2et(date_0)
+    tf = spice.utc2et(date_f)
+    timespan = tf - t0
+    times = tc2array([t0, tf], time_step)
+
+    body = cd.sun
+
+    rs = []
+
+    for name in 'MERCURY', 'VENUS', 'EARTH', "MARS BARYCENTER":
+        rs.append(spice_get_ephemeris_data(name, times, frame, observer))
+
+    propagator = OrbitPropagator(r, v, timespan, time_step, body)
+    propagator.propagate_orbit('lsoda')
+    rs.append(propagator.rs)
+    plot_n_orbit_3d(rs, titles, body.radius, True, 'Tesla Roadster Trajectory', False)
+
+
 if __name__ == '__main__':
     # task_1()
     # task_2()
@@ -376,4 +413,5 @@ if __name__ == '__main__':
     # task_9()
     # task_10()
     # task_12()
-    task_13()
+    # task_13()
+    task_14()

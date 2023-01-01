@@ -127,7 +127,7 @@ class OrbitPropagator:
 
         mdot = 0
 
-        if self.perturbation['J2']:
+        if 'J2' in self.perturbation and self.perturbation['J2']:
             z2 = r[2] ** 2
             r2 = norm_r ** 2
             tx = r[0] / norm_r * (5 * z2 / r2 - 1)
@@ -137,7 +137,7 @@ class OrbitPropagator:
             a_j2 = (1.5 * self.body.j2 * self.body.mu * self.body.radius ** 2) / (norm_r ** 4) * np.array([tx, ty, tz])
             a += a_j2
 
-        if self.perturbation['Aero']:
+        if 'Aero' in self.perturbation and self.perturbation['Aero']:
             # TODO: z should be geodetic altitude, this is geocentric, modify in the future
             z = norm_r - self.body.radius
             rho = calc_atm_density(z, self.body)
@@ -148,12 +148,12 @@ class OrbitPropagator:
 
             a += a_drag
 
-        if self.perturbation['Thrust']:
+        if 'Thrust' in self.perturbation and self.perturbation['Thrust']:
             a += self.pert_params['direction'] * (v / np.linalg.norm(v)) * self.pert_params[
                 'thrust'] / m / 1000.0  # km / s ** 2
             mdot = -self.pert_params['thrust'] / self.pert_params['isp'] / 9.81
 
-        if self.perturbation['N_bodies']:
+        if 'N_bodies' in self.perturbation and self.perturbation['N_bodies']:
             for each_body in self.pert_params['other_bodies']:
                 # vector from central body to nth perturbing body
                 r_cb2body = self.n_bodies_ephemeris[each_body][self.current_step, :3]
@@ -163,10 +163,10 @@ class OrbitPropagator:
 
                 nth_body_acc = self.pert_params['other_bodies'][each_body][0].mu * \
                      (r_sat2body / np.linalg.norm(r_sat2body) ** 3 - r_cb2body / np.linalg.norm(r_cb2body) ** 3)
-
+ 
                 a += nth_body_acc
 
-        if self.perturbation['SRP']:
+        if 'SRP' in self.perturbation and self.perturbation['SRP']:
             r_sun2sat = self.main_body_spice_ephemeris[self.current_step, :3] + r
 
             solar_rad_acc = (1 + self.pert_params['CR']) * self.pert_params['G1'] * self.pert_params['A_srp'] \
