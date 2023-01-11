@@ -252,7 +252,6 @@ def task_9():  # thrust trajectory
 def task_10():  # visualize solar system from spice data
 
     frame = 'ECLIPJ2000'
-    frame = 'J2000'
     # frame = 'J2000' # Earth rotation axis as reference
     body = cd.sun
     observer = 'SUN'
@@ -402,6 +401,143 @@ def task_14():  # test JPL horizon system api
     plot_n_orbit_3d(rs, titles, body.radius, True, 'Tesla Roadster Trajectory', False)
 
 
+def task_15():  # impulsive escape trajectory with moon perturbation
+
+    from src import get_escape_velocity, get_circular_velocity
+
+    body = cd.earth
+
+    r0_pe, v0_pe = coes2rv(body.radius + 26600, 0.74, 35.0, 0.0, 0.0, 0.0, body.mu, deg=True)
+    r0_ap, v0_ap = coes2rv(body.radius + 26600, 0.74, 35.0, 0.0, 0.0, 180.0, body.mu, deg=True)
+
+    v_circ_ap_norm = get_circular_velocity(r0_ap, body.mu)
+    v_circ_pe_norm = get_circular_velocity(r0_pe, body.mu)
+
+    v_esc_ap_norm = get_escape_velocity(r0_ap, body.mu)
+    v_esc_pe_norm = get_escape_velocity(r0_pe, body.mu)
+
+    normalized_v0_pe = v0_pe / np.linalg.norm(v0_pe)
+    normalized_v0_ap = v0_ap / np.linalg.norm(v0_ap)
+
+    v_esc_ap = normalized_v0_ap * v_esc_ap_norm
+    v_esc_pe = normalized_v0_pe * v_esc_pe_norm
+
+    v0_pe_norm = np.linalg.norm(v0_pe)
+    v0_ap_norm = np.linalg.norm(v0_ap)
+
+    timespan = 3600 * 24 * 3
+    timestep = 1000
+
+    propagator_original_eccentric_orbit = OrbitPropagator(r0_pe, v0_pe, timespan, timestep, body)
+    propagator_escape_from_pe = OrbitPropagator(r0_pe, v_esc_pe, timespan, timestep, body)
+    propagator_escape_from_ap = OrbitPropagator(r0_ap, v_esc_ap, timespan, timestep, body)
+
+    frame = 'ECLIPJ2000'
+    date_0 = '2020-02-23'
+
+    rotated_r0_pe, rotated_v0_pe = coes2rv(body.radius + 26600, 0.74, 35.0, 0.0, 205.0, 0.0, body.mu, deg=True)
+    propagator_escape_from_pe_perturbed = OrbitPropagator(rotated_r0_pe, v_esc_pe, timespan, timestep, body)
+    propagator_escape_from_pe_not_perturbed = OrbitPropagator(rotated_r0_pe, v_esc_pe, timespan, timestep, body)
+    propagator_escape_from_pe_perturbed.enable_perturbation(
+        'N_bodies',
+        frame=frame, spice_file='de440s.bsp',
+        date_0=date_0,
+        other_bodies={
+            'MOON': (cd.moon, 'de440s.bsp')
+        }
+    )
+
+    propagator_original_eccentric_orbit.propagate_orbit()
+    propagator_escape_from_pe.propagate_orbit()
+    propagator_escape_from_ap.propagate_orbit()
+    propagator_escape_from_pe_perturbed.propagate_orbit()
+    propagator_escape_from_pe_not_perturbed.propagate_orbit()
+
+    rs = [
+        propagator_original_eccentric_orbit.rs,
+        propagator_escape_from_pe.rs,
+        propagator_escape_from_ap.rs,
+        propagator_escape_from_pe_perturbed.rs,
+        propagator_escape_from_pe_not_perturbed.rs,
+        propagator_escape_from_pe_perturbed.n_bodies_ephemeris['MOON'][:, :3]
+    ]
+
+    titles = [
+        f"escape from pe, dv cost {round(v_esc_pe_norm - v0_pe_norm, 2)} km/s",
+        f"escape from ap, dv cost {round(v_esc_ap_norm - v0_ap_norm, 2)} km/s",
+        "original eccentric orbit",
+        "escape from pe, perturbed by moon gravity",
+        "reference",
+        "Moon"
+    ]
+
+    plot_n_orbit_3d(rs, titles, body.radius, True, "escape trajectory", False)
+
+
+def task_16():  # spiral escape trajectory (low-thrust escape)
+
+    body = cd.earth
+    timespan = 3600 * 24 * 30
+    timestep = 400
+    frame = 'ECLIPJ2000'
+    date_0 = '2020-02-23'
+
+    r0, v0 = coes2rv(body.radius + 400, 0.01, 0.0, 0.0, 0.0, 0.0, body.mu, deg=True)
+
+    propagator_low_thrust_escape = OrbitPropagator(r0, v0, timespan, timestep, body)
+    propagator_low_thrust_escape.enable_perturbation('Thrust', isp=43000.0, direction=1.0, thrust=0.127, mass=30.0)
+    propagator_low_thrust_escape.enable_perturbation(
+        'N_bodies',
+        frame=frame, spice_file='de440s.bsp',
+        date_0=date_0,
+        other_bodies={
+            'MOON': (cd.moon, 'de440s.bsp')
+        }
+    )
+    propagator_low_thrust_escape.enable_stop_conditions('escape_velocity_reached')
+    propagator_low_thrust_escape.propagate_orbit()
+
+    rs = [
+        propagator_low_thrust_escape.rs,
+        # propagator_low_thrust_escape.n_bodies_ephemeris['MOON'][:, :3]
+    ]
+
+    titles = [
+        "escaping trajectory",
+        # "Moon"
+    ]
+
+    plot_n_orbit_3d(rs, titles, body.radius, True, "escape trajectory", False)
+
+    propagator_low_thrust_escape.calculate_all_coes()
+    plot_coes_over_time(propagator_low_thrust_escape.coes,
+                        propagator_low_thrust_escape.ts, time_unit='day')
+
+    #  comparing coasting phase:
+    #  This is showing that you shut down your engine even just a tiny bit before
+    #  Escape velocity you are still bound to parent body's gravity, in a highly eccentric orbit
+    timespan = 3600 * 24 * 100000
+    timestep = 17000
+    coast_propagator_1 = OrbitPropagator(propagator_low_thrust_escape.rs[-1, :],
+                                         propagator_low_thrust_escape.vs[-1, :],
+                                         timespan, timestep, body)
+
+    coast_propagator_2 = OrbitPropagator(propagator_low_thrust_escape.rs[-2, :],
+                                         propagator_low_thrust_escape.vs[-2, :],
+                                         timespan, timestep, body)
+
+    coast_propagator_1.propagate_orbit()
+    coast_propagator_2.propagate_orbit()
+
+    plot_n_orbit_3d([
+        coast_propagator_1.rs,
+        coast_propagator_2.rs
+    ], [
+        "just enough velocity to escape",
+        "a little bit short"
+    ], body.radius, True, "compare coasting", False)
+
+
 if __name__ == '__main__':
     # task_1()
     # task_2()
@@ -414,4 +550,6 @@ if __name__ == '__main__':
     # task_10()
     # task_12()
     # task_13()
-    task_14()
+    # task_14()
+    # task_15()
+    task_16()

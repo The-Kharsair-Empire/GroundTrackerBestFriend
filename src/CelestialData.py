@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from src.Utility import NoneRefersDefault, DefaultVal
 import numpy as np
+from dataclasses import dataclass, fields, field
 
 
 d2r = np.pi / 180.0
@@ -10,18 +10,26 @@ day2sec = 86400
 
 
 @dataclass
-class CelestialBody(NoneRefersDefault):
+class CelestialBody:
     name: str
     mass: float  # kg
     mu: float  # km^3 / s^2
     radius: float  # km
-    j2: float = DefaultVal(0.0)  # Legendre polynomial -C(2, 2)
-    angular_velocity: np.ndarray = DefaultVal(np.zeros(3))  # rad / s
-    rhos: np.ndarray = DefaultVal(np.zeros(3))
-    zs: np.ndarray = DefaultVal(np.zeros(3))
-    dist2parent: float = DefaultVal(0.0)
-    orbital_period: float = DefaultVal(0.0)
-    G1: float = DefaultVal(0.0)  # kg-km^3
+    j2: float = 0.0  # Legendre polynomial -C(2, 2)
+    angular_velocity: np.ndarray = field(default_factory=lambda:np.zeros(3))  # rad / s
+    rhos: np.ndarray = field(default_factory=lambda:np.zeros(3))
+    zs: np.ndarray = field(default_factory=lambda:np.zeros(3))
+    dist2parent: float = 0.0
+    orbital_period: float = 0.0
+    G1: float = 0.0  # kg-km^3
+
+    def __post_init__(self):
+        for field in fields(self):
+            if getattr(self, field.name) is None:
+                setattr(self, field.name, field.default)
+
+
+
 
 
 sun = CelestialBody('Sun', 1.989e30, 1.32712e11, 695700.0, G1=1e8)

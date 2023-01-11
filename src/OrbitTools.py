@@ -150,3 +150,23 @@ def E2ta(E, e):
 def get_r_mag(a, e, E):
     # position from semi-major axis, eccentricity and Eccentric anomaly
     return a * (1 - e * np.cos(E))
+
+
+def get_escape_velocity(r, mu):
+    dist = r
+    if isinstance(r, np.ndarray):
+        dist = np.linalg.norm(r)
+    elif isinstance(r, list):
+        dist = np.linalg.norm(np.array(r))
+    assert isinstance(dist, float)
+    return np.sqrt(2 * mu / dist)
+
+
+def get_circular_velocity(r, mu):
+    dist = r
+    if isinstance(r, np.ndarray):
+        dist = np.linalg.norm(r)
+    elif isinstance(r, list):
+        dist = np.linalg.norm(np.array(r))
+    assert isinstance(dist, float)
+    return (mu / dist) ** 0.5

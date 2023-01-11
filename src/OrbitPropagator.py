@@ -3,7 +3,7 @@ from scipy.integrate import ode
 from multiprocessing import Process, SimpleQueue
 from src import CelestialData as celestialBody
 from .TLE import tle2coes
-from .OrbitTools import coes2rv, rv2coes
+from .OrbitTools import coes2rv, rv2coes, get_escape_velocity
 from .Aerodynamics import calc_atm_density
 from .SPICE import spice_load_kernels, spice_get_ephemeris_data
 import spiceypy as spice
@@ -32,6 +32,7 @@ class OrbitPropagator:
         self.rs = None
         self.coes = None
         self.ts = None
+        self.cache = {}
 
         self.perturbation = {
             'Thrust': False
@@ -90,9 +91,9 @@ class OrbitPropagator:
                     # TODO: some unexpected results in plot, maybe the spice time isn't right?
                     spice_files = []
                     self.pert_params['mass'] = kwargs.get('mass', 10.0)
-                    self.pert_params['CR'] = kwargs.get('CR')   # coefficient of reflection
+                    self.pert_params['CR'] = kwargs.get('CR')  # coefficient of reflection
                     self.pert_params['A_srp'] = kwargs.get('A_srp')  # area, for area to mass ratio
-                    self.pert_params['G1'] = kwargs.get('G1')   # related to solar radiation intensity
+                    self.pert_params['G1'] = kwargs.get('G1')  # related to solar radiation intensity
                     self.pert_params['spice_file'] = kwargs.get('spice_file')  # parent body spice file
                     spice_files.append(self.pert_params['spice_file'])
                     spice_load_kernels(spice_files)
@@ -107,7 +108,7 @@ class OrbitPropagator:
         self.coes = np.zeros((self.n_steps, 6))
         for n in range(self.n_steps):
             self.coes[n, :] = rv2coes(self.rs[n, :], self.vs[n, :], self.body.mu, deg=deg, ta_in_time=ta_in_time, t=t)
-            
+
         self.coes_rel = self.coes - self.coes[0, :]
 
     def calculate_ap_pe(self):
@@ -162,8 +163,9 @@ class OrbitPropagator:
                 r_sat2body = r_cb2body - r
 
                 nth_body_acc = self.pert_params['other_bodies'][each_body][0].mu * \
-                     (r_sat2body / np.linalg.norm(r_sat2body) ** 3 - r_cb2body / np.linalg.norm(r_cb2body) ** 3)
- 
+                               (r_sat2body / np.linalg.norm(r_sat2body) ** 3 - r_cb2body / np.linalg.norm(
+                                   r_cb2body) ** 3)
+
                 a += nth_body_acc
 
         if 'SRP' in self.perturbation and self.perturbation['SRP']:
@@ -225,6 +227,16 @@ class OrbitPropagator:
             max_alt = self.stop_conditions['max_alt'].get('max_alt')
             if np.linalg.norm(ys[current_step - 1, :3]) > max_alt + self.body.radius:
                 print(f"altitude exceed msc altitude {max_alt}")
+                return True
+        if 'escape_velocity_reached' in self.stop_conditions.keys():
+            current_r = ys[current_step - 1, :3]
+            current_v = ys[current_step - 1, 3:6]
+            escape_v = get_escape_velocity(current_r, self.body.mu)
+            current_r_norm = np.linalg.norm(current_v)
+            if current_r_norm > escape_v:
+                print(f"escape velocity {escape_v} around {self.body.name} "
+                      f"at height {current_r_norm} reached")
+                return True
         if 'new_soi' in self.stop_conditions.keys():
             pass
         if 'min_mass' in self.stop_conditions.keys():
