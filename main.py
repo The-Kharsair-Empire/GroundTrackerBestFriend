@@ -13,7 +13,7 @@ from src import get_starman
 import spiceypy as spice
 
 
-def task_1():  # Two body equation of motion
+def two_body_equation():  # Two body equation of motion
     body = cd.earth
     r_mag = body.radius + 500
     v_mag = np.sqrt(body.mu / r_mag)  # vis-viva equation for circular orbit
@@ -45,7 +45,7 @@ def task_1():  # Two body equation of motion
     plot_n_orbit_3d([propagator_1.rs, propagator_2.rs], ['TLI', '500km-LEO'], body.radius)
 
 
-def task_2():  # Classical Orbital Elements
+def classical_keplerian_orbital_elements():  # Classical Orbital Elements
     body = cd.earth
 
     # ISS
@@ -65,7 +65,7 @@ def task_2():  # Classical Orbital Elements
     plot_n_orbit_3d([propagator_1.rs, propagator_2.rs], ['ISS', 'GEO-sat'], body.radius)
 
 
-def task_3():  # TLE
+def two_line_element_set():  # TLE
     tle_raw = \
         """
 ISS (ZARYA)
@@ -109,7 +109,7 @@ ORION
     plot_n_orbit_3d(rs, titles, body.radius)
 
 
-def task_4():  # CZ-6 breakup debris
+def tle_demo():  # CZ-6 breakup debris
     file = open('file/tle/CZ6A_DEB.txt', 'r')
     tle_raw = file.read()
     file.close()
@@ -131,7 +131,7 @@ def task_4():  # CZ-6 breakup debris
     plot_n_orbit_3d(rs, titles, body.radius)
 
 
-def task_5():  # J2 perturbation
+def j2_perturbation():  # J2 perturbation
     tle_raw = \
         """
 ISS (ZARYA)
@@ -155,7 +155,7 @@ ISS (ZARYA)
     plot_n_orbit_3d(rs, titles, body.radius, True, 'J2 perturbation')
 
 
-def task_6():  # coes from r, v state vector
+def calculate_orbital_elements_from_state_vectors():  # coes from r, v state vector
     tle_raw = \
         """
 ISS (ZARYA)
@@ -174,7 +174,7 @@ ISS (ZARYA)
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
 
 
-def task_7():  # sun synchronous orbit
+def sun_synchronous_orbit():  # sun synchronous orbit
 
     body = cd.earth
     r, v = coes2rv(body.radius + 600, 0.01, 63.435, 0.0, 0.0, 50.0, body.mu, deg=True)
@@ -186,7 +186,7 @@ def task_7():  # sun synchronous orbit
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
 
-def task_8():  # air-drag
+def aerodynamic_drag():  # air-drag
 
     body = cd.earth
     pe = 215 + body.radius
@@ -215,7 +215,7 @@ def task_8():  # air-drag
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
 
 
-def task_9():  # thrust trajectory
+def low_thrust_trajectory():  # thrust trajectory
 
     body = cd.earth
     a = body.radius + 20000
@@ -249,7 +249,7 @@ def task_9():  # thrust trajectory
     # plot_one_parameter(propagator.masses, propagator.ts, 'mass', 'spacecraft mass change over time')
 
 
-def task_10():  # visualize solar system from spice data
+def spice_data_solar_system():  # visualize solar system from spice data
 
     frame = 'ECLIPJ2000'
     # frame = 'J2000' # Earth rotation axis as reference
@@ -271,14 +271,12 @@ def task_10():  # visualize solar system from spice data
     plot_n_orbit_3d(rs, names, body.radius, False, 'solar system orbit', False)
 
 
-def task_11():
+def spice_demo():
     # TODO: propagate orbit for Pluto and Neptune in de432.bsp
     pass
 
 
-def task_12():
-    # TODO: n-body propagation
-
+def n_body_perturbation():
     body = cd.earth
     timespan = 3600 * 24 * 100.0
     # file = open('file/tle/ISS.txt', 'r')
@@ -331,7 +329,7 @@ def task_12():
     plot_n_orbit_3d(rs, titles, body.radius, True, 'comparing Moon perturbation to objects orbiting Earth', True)
 
 
-def task_13():  # solar radiation pressure
+def solar_radiation_pressure():  # solar radiation pressure
     frame = 'ECLIPJ2000'
     date_0 = '2020-02-23'
 
@@ -367,7 +365,7 @@ def task_13():  # solar radiation pressure
     plot_n_orbit_3d(rs, titles, body.radius, True, 'Spacecraft in solar radiation perturbation', False)
 
 
-def task_14():  # test JPL horizon system api
+def nasa_jpl_horizon_system_api():  # test JPL horizon system api
     starman = get_starman()[0]
     r = [starman['x'], starman['y'], starman['z']]
     v = [starman['vx'], starman['vy'], starman['vz']]
@@ -401,7 +399,7 @@ def task_14():  # test JPL horizon system api
     plot_n_orbit_3d(rs, titles, body.radius, True, 'Tesla Roadster Trajectory', False)
 
 
-def task_15():  # impulsive escape trajectory with moon perturbation
+def escape_trajectory_single_impulsive():  # impulsive escape trajectory with moon perturbation
 
     from src import get_escape_velocity, get_circular_velocity
 
@@ -474,7 +472,7 @@ def task_15():  # impulsive escape trajectory with moon perturbation
     plot_n_orbit_3d(rs, titles, body.radius, True, "escape trajectory", False)
 
 
-def task_16():  # spiral escape trajectory (low-thrust escape)
+def low_thrust_escape_trajectory():  # spiral escape trajectory (low-thrust escape)
 
     body = cd.earth
     timespan = 3600 * 24 * 30
@@ -538,18 +536,49 @@ def task_16():  # spiral escape trajectory (low-thrust escape)
     ], body.radius, True, "compare coasting", False)
 
 
+def lambert_problem_solver():
+    from src import lambert_universal_variable_algorithm
+    spice_load_kernels([
+        'latest_leapseconds.tls.pc',
+        'de440s.bsp'
+    ])
+
+    frame = 'ECLIPJ2000'
+    body = cd.sun
+    observer = 'SUN'
+    header = 't,rx,ry,rz'
+    time_step = 10000
+
+    date0 = '2005-12-01'
+    datef = '2006-03-01'
+
+    et0 = spice.utc2et(date0)
+    etf = spice.utc2et(datef)
+    transfer_time = etf - et0
+
+    earth_state_vectors = spice_get_ephemeris_data('EARTH', tc2array([et0, etf], time_step), frame, observer)
+    venus_state_vectors = spice_get_ephemeris_data('VENUS', tc2array([et0, etf], time_step), frame, observer)
+
+    r0 = earth_state_vectors[0, :3]
+    rf = venus_state_vectors[-1, :3]
+
+    v0, vf = lambert_universal_variable_algorithm(r0, rf, transfer_time, body.mu)
+
+    propagator = OrbitPropagator(r0, v0, transfer_time, time_step, body)
+
+    propagator.propagate_orbit()
+
+    plot_n_orbit_3d([
+        earth_state_vectors[:, :3],
+        venus_state_vectors[:, :3],
+        propagator.rs
+    ], [
+        'Earth',
+        'Venus',
+        'Spacecraft'
+    ], body.radius,
+        title='Lambert solver solving transfer boundary value problem')
+
+
 if __name__ == '__main__':
-    # task_1()
-    # task_2()
-    # task_3()
-    # task_4()
-    # task_5()
-    # task_6()
-    # task_7()
-    # task_9()
-    # task_10()
-    # task_12()
-    # task_13()
-    # task_14()
-    # task_15()
-    task_16()
+    lambert_problem_solver()
