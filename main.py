@@ -537,7 +537,7 @@ def low_thrust_escape_trajectory():  # spiral escape trajectory (low-thrust esca
 
 
 def lambert_problem_solver():
-    from src import lambert_universal_variable_algorithm
+    from src import lambert_universal_variable_algorithm, lambert_solver_pykey_project
     spice_load_kernels([
         'latest_leapseconds.tls.pc',
         'de440s.bsp'
@@ -563,6 +563,7 @@ def lambert_problem_solver():
     rf = venus_state_vectors[-1, :3]
 
     v0, vf = lambert_universal_variable_algorithm(r0, rf, transfer_time, body.mu)
+    # v0, vf = lambert_solver_pykey_project(r0, rf, transfer_time, body.mu)
 
     propagator = OrbitPropagator(r0, v0, transfer_time, time_step, body)
 

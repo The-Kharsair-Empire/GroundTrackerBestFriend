@@ -1,11 +1,117 @@
 import numpy as np
 import math
 
-# TODO: try other different lambert solver algorithms: Gauss's method, PyKep project
+
+# TODO: try other different lambert solver algorithms: Gauss's method
+def lambert_solver_pykey_project(r0: np.ndarray, r1: np.ndarray, transfer_time, mu, prograde=True):
+    # TODO: I mean this is totally wrong, no idea
+    r0_norm = np.linalg.norm(r0)
+    r1_norm = np.linalg.norm(r1)
+    c = np.linalg.norm((r0 - r1))
+    s = (r0_norm + r1_norm + c) / 2
+    lambda_ = math.sqrt(1 - c / s)
+    t = transfer_time * math.sqrt(2 * mu / s ** 3)
+
+    ir0 = r0 / r0_norm
+    ir1 = r1 / r1_norm
+
+    ih = np.cross(ir0, ir1)
+    ih = ih / np.linalg.norm(ih)
+
+    it0 = np.cross(ih, ir0)
+    it0 = it0 / np.linalg.norm(it0)
+
+    it1 = np.cross(ih, ir1)
+    it1 = it1 / np.linalg.norm(it1)
+
+    if ih[1] < 0 != prograde:
+        it0 = -it0
+        it1 = -it1
+        lambda_ = -lambda_
+
+    x = iterative_root_finder(lambda_, t)
+
+    y = math.sqrt(1 - lambda_ ** 2 * (1 - x ** 2))
+    z = lambda_ * y
+    rho = (r0_norm - r1_norm) / c
+    gamma = math.sqrt(mu * s / 2)
+
+    vr0 = (z - x) - rho * (x + z)
+    vr1 = (x - z) - rho * (x + z)
+    vt = math.sqrt(1 - rho ** 2) * (y + lambda_ * x)
+
+    v0 = (gamma / r0_norm) * (vr0 * ir0 + vt * it0)
+    v1 = (gamma / r1_norm) * (vr1 * ir1 + vt * it1)
+
+    return v0, v1
+
+
+def iterative_root_finder(lambda_, t):
+    x = initial_guess(lambda_, t)
+    delta = 1
+    iterations = 0
+    while abs(delta) >= 0.00001 or iterations == 15:
+        delta = householders_method(lambda_, t, x)
+        x -= delta
+        iterations += 1
+
+    return x
+
+
+def initial_guess(lambda_, t):
+
+    d2r = np.pi / 180.0
+    t0 = d2r * math.acos(lambda_) + lambda_ * math.sqrt(1 - lambda_ ** 2)
+    t1 = (2 / 3) * (1 - lambda_ ** 3)
+    print(t, t0, t1)
+
+    if t >= t0:
+        print(t0 / t)
+        a = round(t0 / t, 3)
+        print(a)
+        b = 0.66
+        print(b)
+        c = 1
+        print(c)
+        d = a ** b - c
+        print(a ** b - c)
+
+        return d.real
+    elif t <= t1:
+        print(2)
+        print((5 * t1 * (t1 - t)) / (2 * t * (1 - lambda_ ** 5)) + 1)
+        return (5 * t1 * (t1 - t)) / (2 * t * (1 - lambda_ ** 5)) + 1
+    else:
+        print(3)
+        print((t0 / t) ** (math.log(t1 / t0) / math.log(2)) - 1)
+        return (t0 / t) ** (math.log(t1 / t0) / math.log(2)) - 1
+
+
+def householders_method(lambda_, t, x):
+    a = 1 - x ** 2
+
+    y = math.sqrt(1 - lambda_ ** 2 * a)
+    tau = time_of_flight(lambda_, a, x, y)
+    delta = tau - t
+
+    dt = (3 * tau * x - 2 + 2 * (lambda_ ** 3) * x / y) / a
+    ddt = (3 * tau + 5 * x * dt + 2 * (1 - lambda_ ** 2) * (lambda_ ** 3) / (y ** 3)) / a
+    dddt = (7 * x * ddt + 8 * dt - 6 * (1 - lambda_ ** 2) * (lambda_ ** 5) * x / (y ** 5)) / a
+
+    return delta * (dt ** 2 - delta * ddt / 2) / (dt * (dt ** 2 - delta * ddt) + (dddt * delta ** 2) / 6)
+
+
+def time_of_flight(lambda_, a, x, y):
+    d2r = np.pi / 180.0
+    b = math.sqrt(abs(a))
+    f = b * (y - lambda_ * x)
+    g = lambda_ * a + x * y
+    psi = d2r * math.acos(g) if a > 0 else math.log(max(1e-300, f + g), math.e)
+    return (psi / b - x + lambda_ * y) / a
 
 
 def lambert_universal_variable_algorithm(r0: np.ndarray, r1: np.ndarray,
-                                         dt, mu, prograde=True, tol=1e-6,
+                                         transfer_time, mu, prograde=True, tol=1e-6,
                                          max_steps=200,
                                          psi_0=0, psi_u=4 * np.pi ** 2, psi_l=-4 * np.pi):
     if prograde:
@@ -42,11 +148,11 @@ def lambert_universal_variable_algorithm(r0: np.ndarray, r1: np.ndarray,
 
         chi3 = np.sqrt(B / c2) ** 3
         dt_tilda = (chi3 * c3 + A * np.sqrt(B)) / sqrt_mu
-        if abs(dt - dt_tilda) < tol:
+        if abs(transfer_time - dt_tilda) < tol:
             solved = True
             break
 
-        if dt_tilda <= dt:
+        if dt_tilda <= transfer_time:
             psi_l = psi
         else:
             psi_u = psi
