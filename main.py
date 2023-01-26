@@ -10,6 +10,8 @@ from src import coes2rv
 from src import tle2coes, parse_raw_tle
 from src import spice_load_kernels, spice_get_spk_objects, tc2array, spice_get_ephemeris_data
 from src import get_starman
+from src import get_orbital_speed
+from src import get_orbital_period
 import spiceypy as spice
 
 
@@ -581,5 +583,43 @@ def lambert_problem_solver():
         title='Lambert solver solving transfer boundary value problem')
 
 
+def hohmann_transfer():
+    from src.OrbitTools import hohmann_transfer_dv
+    body = cd.earth
+    r_init = 500 + body.radius
+    r_final = 4000 + body.radius
+    dt = 10
+
+    v_init = get_orbital_speed(r_init, r_init, body.mu)
+    v_final = get_orbital_speed(r_final, r_final, body.mu)
+
+    a_transfer = (r_init + r_final) / 2
+    v_transfer_at_init = get_orbital_speed(r_init, a_transfer, body.mu)
+    v_transfer_at_final = get_orbital_speed(r_final, a_transfer, body.mu)
+
+    p_transfer = get_orbital_period(a_transfer, body.mu)
+    p_init = get_orbital_period(r_init, body.mu)
+    p_final = get_orbital_period(r_final, body.mu)
+    t_transfer = p_transfer / 2
+
+    init_orbit_propagator = OrbitPropagator([r_init, 0, 0], [0, v_init, 0], p_init, dt, body=body)
+    final_orbit_propagator = OrbitPropagator([r_final, 0, 0], [0, v_final, 0], p_final, dt, body=body)
+    transfer_orbit_propagator = OrbitPropagator([r_init, 0, 0], [0, v_transfer_at_init, 0], t_transfer, dt, body=body)
+
+    init_orbit_propagator.propagate_orbit()
+    final_orbit_propagator.propagate_orbit()
+    transfer_orbit_propagator.propagate_orbit()
+
+    hohmann = hohmann_transfer_dv(r_init, r_final, body)
+    print(f"Transfer period: {hohmann[1]} vs {t_transfer}")
+    print(f"Transfer Dv: {hohmann[0]} vs {[v_transfer_at_init - v_init, v_final - v_transfer_at_final]}")
+    print(f"Speed on transfer orbit at final point: calculated {v_transfer_at_final} vs "
+          f"propagated {np.linalg.norm(transfer_orbit_propagator.vs[-1, :])}")
+
+    plot_n_orbit_3d([init_orbit_propagator.rs, final_orbit_propagator.rs, transfer_orbit_propagator.rs],
+                    ["Initial Orbit", "Final Orbit", "Transfer Orbit"], body.radius)
+
+
 if __name__ == '__main__':
-    lambert_problem_solver()
+    # lambert_problem_solver()
+    hohmann_transfer()

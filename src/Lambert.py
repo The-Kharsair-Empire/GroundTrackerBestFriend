@@ -61,29 +61,20 @@ def iterative_root_finder(lambda_, t):
 def initial_guess(lambda_, t):
 
     d2r = np.pi / 180.0
-    t0 = d2r * math.acos(lambda_) + lambda_ * math.sqrt(1 - lambda_ ** 2)
+    t0 = abs(d2r * math.acos(lambda_) + lambda_ * math.sqrt(1 - lambda_ ** 2))
+    # adding a abs() is the only way to fix it, but it seems that the direction is still reverse
     t1 = (2 / 3) * (1 - lambda_ ** 3)
-    print(t, t0, t1)
+    # print(t, t0, t1)
 
     if t >= t0:
-        print(t0 / t)
-        a = round(t0 / t, 3)
-        print(a)
-        b = 0.66
-        print(b)
-        c = 1
-        print(c)
-        d = a ** b - c
-        print(a ** b - c)
-
-        return d.real
+        return (t0 / t) ** (2 / 3) - 1     # warning: risk of complex value
     elif t <= t1:
-        print(2)
-        print((5 * t1 * (t1 - t)) / (2 * t * (1 - lambda_ ** 5)) + 1)
+        # print(2)
+        # print((5 * t1 * (t1 - t)) / (2 * t * (1 - lambda_ ** 5)) + 1)
         return (5 * t1 * (t1 - t)) / (2 * t * (1 - lambda_ ** 5)) + 1
     else:
-        print(3)
-        print((t0 / t) ** (math.log(t1 / t0) / math.log(2)) - 1)
+        # print(3)
+        # print((t0 / t) ** (math.log(t1 / t0) / math.log(2)) - 1)
         return (t0 / t) ** (math.log(t1 / t0) / math.log(2)) - 1
 
 

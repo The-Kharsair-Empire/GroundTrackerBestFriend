@@ -170,3 +170,29 @@ def get_circular_velocity(r, mu):
         dist = np.linalg.norm(np.array(r))
     assert isinstance(dist, float)
     return (mu / dist) ** 0.5
+
+
+def get_orbital_speed(r, a, mu):
+    return math.sqrt(mu * (2 / r - 1 / a))
+
+
+def get_orbital_period(a, mu):
+    return 2 * math.pi * math.sqrt(a ** 3 / mu)
+
+
+def vis_viva_dv1(r0, r1, mu):
+    return math.sqrt(mu / r0) * (math.sqrt((2 * r1) / (r0 + r1)) - 1)
+
+
+def vis_viva_dv2(r0, r1, mu):
+    return math.sqrt(mu / r1) * (1 - math.sqrt((2 * r0) / (r0 + r1)))
+
+
+def hohmann_transfer_dv(r0, r1, body, separate=True):
+
+    a_transfer = (r0 + r1) / 2.0  # semi-major axis of transfer orbit
+    t_transfer = get_orbital_period(a_transfer, body.mu) / 2.0
+    if separate:
+        return (vis_viva_dv1(r0, r1, body.mu), vis_viva_dv2(r0, r1, body.mu)), t_transfer
+    else:
+        return vis_viva_dv1(r0, r1, body.mu) + vis_viva_dv2(r0, r1, body.mu), t_transfer
