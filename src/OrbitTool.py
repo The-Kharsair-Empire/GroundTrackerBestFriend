@@ -33,7 +33,6 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
 
 
 def rv2coes(r, v, body_mu, ta_in_time=False, t=None, deg=False):
-
     r_norm = np.linalg.norm(r)
     v_norm = np.linalg.norm(v)
 
@@ -188,11 +187,12 @@ def vis_viva_dv2(r0, r1, mu):
     return math.sqrt(mu / r1) * (1 - math.sqrt((2 * r0) / (r0 + r1)))
 
 
-def hohmann_transfer_dv(r0, r1, body, separate=True):
-
+def hohmann_transfer_scalar_dv(r0, r1, body, separate=True):
     a_transfer = (r0 + r1) / 2.0  # semi-major axis of transfer orbit
     t_transfer = get_orbital_period(a_transfer, body.mu) / 2.0
     if separate:
         return (vis_viva_dv1(r0, r1, body.mu), vis_viva_dv2(r0, r1, body.mu)), t_transfer
     else:
         return vis_viva_dv1(r0, r1, body.mu) + vis_viva_dv2(r0, r1, body.mu), t_transfer
+
+

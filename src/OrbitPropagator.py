@@ -3,7 +3,7 @@ from scipy.integrate import ode
 from multiprocessing import Process, SimpleQueue
 from src import CelestialData as celestialBody
 from .TLE import tle2coes
-from .OrbitTools import coes2rv, rv2coes, get_escape_velocity
+from .OrbitTool import coes2rv, rv2coes, get_escape_velocity
 from .Aerodynamics import calc_atm_density
 from .SPICE import spice_load_kernels, spice_get_ephemeris_data
 import spiceypy as spice

@@ -584,7 +584,7 @@ def lambert_problem_solver():
 
 
 def hohmann_transfer():
-    from src.OrbitTools import hohmann_transfer_dv
+    from src.OrbitTool import hohmann_transfer_scalar_dv
     body = cd.earth
     r_init = 500 + body.radius
     r_final = 4000 + body.radius
@@ -610,7 +610,7 @@ def hohmann_transfer():
     final_orbit_propagator.propagate_orbit()
     transfer_orbit_propagator.propagate_orbit()
 
-    hohmann = hohmann_transfer_dv(r_init, r_final, body)
+    hohmann = hohmann_transfer_scalar_dv(r_init, r_final, body)
     print(f"Transfer period: {hohmann[1]} vs {t_transfer}")
     print(f"Transfer Dv: {hohmann[0]} vs {[v_transfer_at_init - v_init, v_final - v_transfer_at_final]}")
     print(f"Speed on transfer orbit at final point: calculated {v_transfer_at_final} vs "
@@ -620,6 +620,29 @@ def hohmann_transfer():
                     ["Initial Orbit", "Final Orbit", "Transfer Orbit"], body.radius)
 
 
+def kepler_time_algorithm():
+    from src import rv2coes
+    body = cd.earth
+    pe = 400 + body.radius
+    ap = 20000 + body.radius
+    a = (pe + ap) / 2.0
+    e = (ap - pe) / (ap + pe)
+    raan = 0.0
+    i = 0.0
+    aop = 0.0
+    ta = 180.0
+    print(a, e, i, raan, aop, ta)
+
+    P = get_orbital_period(a, body.mu)  # period in seconds
+    r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, True)
+    coes = rv2coes(r, v, body.mu, True, 0.0, True)
+    print(coes)
+    print(P)
+
+
 if __name__ == '__main__':
     # lambert_problem_solver()
-    hohmann_transfer()
+    # hohmann_transfer()
+    # kepler_time_algorithm()
+
+    spice_data_solar_system()

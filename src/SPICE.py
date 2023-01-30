@@ -78,3 +78,6 @@ def spice_rv2coes(state, et, mu, deg=False):
 
     return a, e, i, raan, aop, ta
 
+
+if __name__ == '__main__':
+    spice_get_spk_objects('de432s.bsp')
