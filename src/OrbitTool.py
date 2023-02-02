@@ -116,14 +116,21 @@ def rotmat_eci2perifocal(raan, i, aop):
 def rotmat_eci2ecef(theta_gmt):
     s = np.sin
     c = np.cos
-    print(theta_gmt)
-    print(c(theta_gmt))
-    print(s(theta_gmt))
+
+    # found the error ! this is the z rotation in left hand coordinate system
+    # ecef and eci are right hand frame. fuck game dev tutorial
+    # return np.array([
+    #     [c(theta_gmt), -s(theta_gmt), 0],
+    #     [s(theta_gmt), c(theta_gmt), 0],
+    #     [0, 0, 1]
+    # ])
+
+    # this is the rotation matrix for right hand frame
     return np.array([
-        [c(theta_gmt), -s(theta_gmt), 0],
-        [s(theta_gmt), c(theta_gmt), 0],
-        [0, 0, 1]
-    ])
+            [c(theta_gmt), s(theta_gmt), 0],
+            [-s(theta_gmt), c(theta_gmt), 0],
+            [0, 0, 1]
+        ])
 
 
 def rotmat_perifocal2eci(raan, i, aop):
@@ -132,7 +139,6 @@ def rotmat_perifocal2eci(raan, i, aop):
 
 def eci2ecef(r, theta_gmt):
     Cic = rotmat_eci2ecef(theta_gmt)
-    print(Cic)
     return np.dot(Cic, r)
 
 

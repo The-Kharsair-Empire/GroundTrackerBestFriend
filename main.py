@@ -641,27 +641,51 @@ def kepler_time_algorithm():
 
 
 def ground_track():
+    tle_raw = \
+        """
+ISS (ZARYA)
+1 25544U 98067A   22339.03402137  .00010856  00000+0  19968-3 0  9994
+2 25544  51.6438 210.2304 0004354 127.5503 200.9328 15.49745241371670
+"""
+    tle_parsed = parse_raw_tle(tle_raw)
     body = cd.earth
-    timespan = 3600 * 24
+    timespan = 3600 * 2 * 59
 
-    a = body.radius + 1000
-    e = 0.001
+    rs = []
+    titles = []
+    ts = []
+
+    for tle in tle_parsed:
+        coes = tle2coes(tle, body.mu)
+        r, v = coes2rv(*coes[:-1], body.mu)
+        propagator = OrbitPropagator(r, v, 3600 * 24 * 3, 100.0, body)
+        propagator.propagate_orbit('lsoda')
+        rs.append(propagator.rs)
+        temp = propagator.ts.T[0]
+        ts.append(temp)
+        titles.append(tle.satellite_name)
+
+    a = 72164.0
+    e = 0.89
     raan = 0
-    i = 30
-    aop = 0
+    i = 63.4
+    aop = -90
     ta = 0
 
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
 
-    propagator = OrbitPropagator(r, v, timespan, 100.0, body)
+    propagator = OrbitPropagator(r, v, timespan, 50.0, body)
     propagator.propagate_orbit()
+
+    rs.append(propagator.rs)
+    temp = propagator.ts.T[0]
+    ts.append(temp)
+    titles.append("Molniya ?")
 
     from src import groundtracks
 
-    ts = propagator.ts.T[0]
-    # print(ts)
-    plot_n_orbit_3d([propagator.rs], ['Orbit'], body.radius)
-    groundtracks([propagator.rs], [ts], ['Orbit'])
+    plot_n_orbit_3d(rs, titles, body.radius)
+    groundtracks(rs, ts, titles)
 
 
 if __name__ == '__main__':

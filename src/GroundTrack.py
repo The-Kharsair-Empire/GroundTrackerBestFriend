@@ -14,6 +14,7 @@ def groundtracks(positions, times, titles, start_time=None, cities=None, show_pl
     plot_coastlines()
     plot_cities(cities)
     assert len(positions) == len(times) == len(titles)
+
     for i in range(len(positions)):
         plot_groundtracks(positions[i], times[i], titles[i], start_time)
     plt.grid(linestyle='dotted')
@@ -34,7 +35,6 @@ def plot_groundtracks(rs: np.ndarray, ts: np.ndarray, name, start_time=None):
     spherical_coords = get_groundtracks(rs, ts, start_time)
 
     # plot first point bigger than the rest, and x is long so index 1 first
-    # print(spherical_coords)
     plt.plot(spherical_coords[0, 1], spherical_coords[0, 0], 'ro', label=name)
     plt.plot(spherical_coords[1:, 1], spherical_coords[1:, 0], 'ro', markersize=1)
 
@@ -55,8 +55,8 @@ def get_groundtracks(rs: np.ndarray, ts: np.ndarray, start_time=None):
 
         rs_ecef = eci2ecef(rs[i, :], theta_gmt)
 
-        # latlongs.append(rs_ecef2latlong(rs_ecef))
-        latlongs.append(rs_ecef2latlong(rs[i]))
+        latlongs.append(rs_ecef2latlong(rs_ecef))
+        # latlongs.append(rs_ecef2latlong(rs[i]))
 
     return np.array(latlongs)
 
@@ -73,6 +73,7 @@ def rs_ecef2latlong(r):
     r2d = 180.0 / np.pi
 
     return np.array([lat * r2d, long * r2d, r_mag])
+
 
 def plot_coastlines():
     coastlines_coords_file = os.path.join(os.path.dirname(__file__), '..', 'file', 'csv', 'coastlines.csv')
