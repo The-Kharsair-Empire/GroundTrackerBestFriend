@@ -24,7 +24,7 @@ def coes2rv(a, e, i, raan, aop, ta, body_mu: float, deg=False):
     r_perifocal = r_norm * np.array([math.cos(ta), math.sin(ta), 0])
     v_perifocal = math.sqrt(body_mu * a) / r_norm * np.array([-math.sin(E), math.cos(E) * math.sqrt(1 - e ** 2), 0])
 
-    Cpe = perifocal2eci(raan, i, aop)
+    Cpe = rotmat_perifocal2eci(raan, i, aop)
 
     r = np.dot(Cpe, r_perifocal)
     v = np.dot(Cpe, v_perifocal)
@@ -103,7 +103,7 @@ def rv2coes(r, v, body_mu, ta_in_time=False, t=None, deg=False):
         return a, e, i, raan, aop, ta
 
 
-def eci2perifocal(raan, i, aop):
+def rotmat_eci2perifocal(raan, i, aop):
     s = np.sin
     c = np.cos
     return np.array([
@@ -113,8 +113,26 @@ def eci2perifocal(raan, i, aop):
     ])
 
 
-def perifocal2eci(raan, i, aop):
-    return np.transpose(eci2perifocal(raan, i, aop))
+def rotmat_eci2ecef(theta_gmt):
+    s = np.sin
+    c = np.cos
+    print(theta_gmt)
+    print(c(theta_gmt))
+    print(s(theta_gmt))
+    return np.array([
+        [c(theta_gmt), -s(theta_gmt), 0],
+        [s(theta_gmt), c(theta_gmt), 0],
+        [0, 0, 1]
+    ])
+
+
+def rotmat_perifocal2eci(raan, i, aop):
+    return np.transpose(rotmat_eci2perifocal(raan, i, aop))
+
+
+def eci2ecef(r, theta_gmt):
+    Cic = rotmat_eci2ecef(theta_gmt)
+    return np.dot(Cic, r)
 
 
 def ta2E(ta, e):

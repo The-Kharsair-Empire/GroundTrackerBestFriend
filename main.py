@@ -640,9 +640,35 @@ def kepler_time_algorithm():
     print(P)
 
 
+def ground_track():
+    body = cd.earth
+    timespan = 3600 * 24 * 360.0
+
+    a = body.radius + 400
+    e = 0.001
+    raan = 0
+    i = 30
+    aop = 0
+    ta = 0
+
+    r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
+
+    propagator = OrbitPropagator(r, v, timespan, 500.0, body)
+    propagator.propagate_orbit()
+
+    from src import groundtracks
+
+    ts = propagator.ts.T[0]
+    # print(ts)
+    plot_n_orbit_3d([propagator.rs], ['Orbit'], body.radius)
+    groundtracks([propagator.rs], [ts], ['Orbit'])
+
+
 if __name__ == '__main__':
     # lambert_problem_solver()
     # hohmann_transfer()
     # kepler_time_algorithm()
 
-    spice_data_solar_system()
+    # spice_data_solar_system()
+    ground_track()
+    # solar_radiation_pressure()

@@ -47,7 +47,8 @@ def spice_get_spk_objects(filename, verbose=False):
 
         try:
             names.append(spice.bodc2n(o))  # return name of body given spice id
-        except:
+        except Exception as e:
+            print(e)
             names.append('Unknown Object')  # some random body might not have name in spice database
 
         if verbose:
@@ -77,6 +78,14 @@ def spice_rv2coes(state, et, mu, deg=False):
         raan *= r2d
 
     return a, e, i, raan, aop, ta
+
+
+def spice_rotmat_ecf2ecef(frame_from, frame_to, timestamp):
+    return spice.pxform(frame_from, frame_to, timestamp)
+
+
+def spice_ecefcoor2latlong(r_ecef):
+    return spice.reclat(r_ecef)
 
 
 if __name__ == '__main__':
