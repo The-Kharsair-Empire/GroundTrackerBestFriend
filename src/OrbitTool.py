@@ -132,6 +132,7 @@ def rotmat_perifocal2eci(raan, i, aop):
 
 def eci2ecef(r, theta_gmt):
     Cic = rotmat_eci2ecef(theta_gmt)
+    print(Cic)
     return np.dot(Cic, r)
 
 

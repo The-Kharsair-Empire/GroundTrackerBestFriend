@@ -34,7 +34,7 @@ def plot_groundtracks(rs: np.ndarray, ts: np.ndarray, name, start_time=None):
     spherical_coords = get_groundtracks(rs, ts, start_time)
 
     # plot first point bigger than the rest, and x is long so index 1 first
-    print(spherical_coords)
+    # print(spherical_coords)
     plt.plot(spherical_coords[0, 1], spherical_coords[0, 0], 'ro', label=name)
     plt.plot(spherical_coords[1:, 1], spherical_coords[1:, 0], 'ro', markersize=1)
 
@@ -51,9 +51,10 @@ def get_groundtracks(rs: np.ndarray, ts: np.ndarray, start_time=None):
     # rs_ecef = np.zeros(rs.shape)
     latlongs = []
     for i in range(len(rs)):
-        # theta_gmt = ts[i] * np.pi * 2 / day_in_sec
+        theta_gmt = ts[i] * np.pi * 2 / day_in_sec
 
-        # rs_ecef = eci2ecef(rs[i, :], theta_gmt)
+        rs_ecef = eci2ecef(rs[i, :], theta_gmt)
+
         # latlongs.append(rs_ecef2latlong(rs_ecef))
         latlongs.append(rs_ecef2latlong(rs[i]))
 
@@ -102,7 +103,6 @@ def get_world_city_coor():
         lines = f.readlines()
 
     header = lines[0]
-    print(header)
     cities = {}
     for line in lines[1:]:
         line = line.split(',')
