@@ -642,9 +642,9 @@ def kepler_time_algorithm():
 
 def ground_track():
     body = cd.earth
-    timespan = 3600 * 24 * 360.0
+    timespan = 3600 * 24
 
-    a = body.radius + 400
+    a = body.radius + 1000
     e = 0.001
     raan = 0
     i = 30
@@ -653,7 +653,7 @@ def ground_track():
 
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
 
-    propagator = OrbitPropagator(r, v, timespan, 500.0, body)
+    propagator = OrbitPropagator(r, v, timespan, 100.0, body)
     propagator.propagate_orbit()
 
     from src import groundtracks

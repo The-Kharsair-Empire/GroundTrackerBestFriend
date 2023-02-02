@@ -34,13 +34,15 @@ def plot_groundtracks(rs: np.ndarray, ts: np.ndarray, name, start_time=None):
     spherical_coords = get_groundtracks(rs, ts, start_time)
 
     # plot first point bigger than the rest, and x is long so index 1 first
+    print(spherical_coords)
     plt.plot(spherical_coords[0, 1], spherical_coords[0, 0], 'ro', label=name)
     plt.plot(spherical_coords[1:, 1], spherical_coords[1:, 0], 'ro', markersize=1)
 
     pass
 
 
-# TODO: this is obviously wrong
+# TODO: this is obviously wrong, the eci to ecef part is not wrong, and ecef to latlong, the text book formula does
+#  not work
 def get_groundtracks(rs: np.ndarray, ts: np.ndarray, start_time=None):
     # if start_date is None, then the first time is at the start of the epoch time when theta gmt = 0
     # TODO: if not, read from spice file the earth theta gmt at given start time in gmt and start from that
@@ -49,24 +51,27 @@ def get_groundtracks(rs: np.ndarray, ts: np.ndarray, start_time=None):
     # rs_ecef = np.zeros(rs.shape)
     latlongs = []
     for i in range(len(rs)):
-        theta_gmt = ts[i] * np.pi * 2 / day_in_sec
-        print(theta_gmt)
-        print(ts[i])
-        rs_ecef = eci2ecef(rs[i, :], theta_gmt)
-        latlongs.append(rs_ecef2latlong(rs_ecef))
+        # theta_gmt = ts[i] * np.pi * 2 / day_in_sec
+
+        # rs_ecef = eci2ecef(rs[i, :], theta_gmt)
+        # latlongs.append(rs_ecef2latlong(rs_ecef))
+        latlongs.append(rs_ecef2latlong(rs[i]))
 
     return np.array(latlongs)
 
 
 def rs_ecef2latlong(r):
     r_mag = np.linalg.norm(r)
+    # lat = np.arcsin(r[2] / r_mag)
+    # long = np.arccos((r[0] / r_mag * np.cos(lat)))
     lat = np.arcsin(r[2] / r_mag)
-    long = np.arccos((r[0] / r_mag * np.cos(lat)))
+    long = np.arctan2(r[1], r[0])
 
-    if r[1] / r_mag <= 0:
-        long = 2 * np.pi - long
+    # if r[1] / r_mag <= 0:
+    #     long = 2 * np.pi - long
+    r2d = 180.0 / np.pi
 
-    return np.array([lat, long, r_mag])
+    return np.array([lat * r2d, long * r2d, r_mag])
 
 def plot_coastlines():
     coastlines_coords_file = os.path.join(os.path.dirname(__file__), '..', 'file', 'csv', 'coastlines.csv')
