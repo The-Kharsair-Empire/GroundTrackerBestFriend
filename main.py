@@ -12,6 +12,7 @@ from src import spice_load_kernels, spice_get_spk_objects, tc2array, spice_get_e
 from src import get_starman
 from src import get_orbital_speed
 from src import get_orbital_period
+from src import groundtracks
 import spiceypy as spice
 
 
@@ -179,13 +180,21 @@ ISS (ZARYA)
 def sun_synchronous_orbit():  # sun synchronous orbit
 
     body = cd.earth
-    r, v = coes2rv(body.radius + 600, 0.01, 63.435, 0.0, 0.0, 50.0, body.mu, deg=True)
-    propagator = OrbitPropagator(r, v, 3600 * 48, 100.0, body)
-    propagator.enable_perturbation('J2')
-    propagator.propagate_orbit('lsoda')
-    propagator.calculate_all_coes(deg=True)
+    rs = []
+    altitude = [400, 1000, 1400]
+    inclination = [97.03, 99.49, 101.43]
+    titles = ['400 km SSO', '1000 km SSO', '1400 km SSO']
+    for i in range(3):
+        r, v = coes2rv(body.radius + altitude[i], 0.001, inclination[i], 0.0, 0.0, 0.0, body.mu, deg=True)
+        propagator = OrbitPropagator(r, v, 3600 * 48, 100.0, body)
+        propagator.enable_perturbation('J2')
+        propagator.propagate_orbit('lsoda')
+        propagator.calculate_all_coes(deg=True)
 
-    plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+        plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+        rs.append(propagator.rs)
+
+    plot_n_orbit_3d(rs, titles, body.radius, title='SSO')
 
 
 def aerodynamic_drag():  # air-drag
@@ -658,18 +667,35 @@ ISS (ZARYA)
     for tle in tle_parsed:
         coes = tle2coes(tle, body.mu)
         r, v = coes2rv(*coes[:-1], body.mu)
-        propagator = OrbitPropagator(r, v, 3600 * 24 * 3, 100.0, body)
+        propagator = OrbitPropagator(r, v, 3600 * 3, 20.0, body)
         propagator.propagate_orbit('lsoda')
         rs.append(propagator.rs)
         temp = propagator.ts.T[0]
         ts.append(temp)
         titles.append(tle.satellite_name)
 
-    a = 72164.0
-    e = 0.89
+    # a = 72164.0
+    # e = 0.89
+    # raan = 0
+    # i = 63.4
+    # aop = -90
+    # ta = 0
+    #
+    # r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
+    #
+    # propagator = OrbitPropagator(r, v, timespan, 50.0, body)
+    # propagator.propagate_orbit()
+    #
+    # rs.append(propagator.rs)
+    # temp = propagator.ts.T[0]
+    # ts.append(temp)
+    # titles.append("Molniya ?")
+
+    a = 42163.74
+    e = 0.00001
     raan = 0
-    i = 63.4
-    aop = -90
+    i = 0
+    aop = 0
     ta = 0
 
     r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, deg=True)
@@ -680,9 +706,38 @@ ISS (ZARYA)
     rs.append(propagator.rs)
     temp = propagator.ts.T[0]
     ts.append(temp)
-    titles.append("Molniya ?")
+    titles.append("Geo-Synchronous")
 
-    from src import groundtracks
+    # plot_n_orbit_3d(rs, titles, body.radius)
+    groundtracks(rs, ts, titles)
+
+
+# TODO: Energy drift problem in orbital propagation
+
+
+def geo_synchronous_orbit():
+    body = cd.earth
+    import random
+
+    a = 42238  # TODO: dunno why 42164 km causes drift
+    time_span = 10.0 * get_orbital_period(a, body.mu)
+    dt = 100.0
+    rs = []
+    ts = []
+    titles = []
+    for i in range(10):
+        e = random.random()
+        raan = random.uniform(0, 360)
+        i = random.uniform(0, 90)
+        aop = random.uniform(0, 360)
+        ta = random.uniform(0, 180)
+
+        r, v = coes2rv(a, e, i, raan, aop, ta, body.mu, True)
+        propagator = OrbitPropagator(r, v, time_span, dt, body)
+        propagator.propagate_orbit()
+        rs.append(propagator.rs)
+        ts.append(propagator.get_time_stamps_1d())
+        titles.append(f"{round(e)},{round(i)},{round(raan)},{round(aop)}")
 
     plot_n_orbit_3d(rs, titles, body.radius)
     groundtracks(rs, ts, titles)
@@ -694,5 +749,7 @@ if __name__ == '__main__':
     # kepler_time_algorithm()
 
     # spice_data_solar_system()
-    ground_track()
+    # ground_track()
     # solar_radiation_pressure()
+    # sun_synchronous_orbit()
+    geo_synchronous_orbit()

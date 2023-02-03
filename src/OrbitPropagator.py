@@ -248,6 +248,9 @@ class OrbitPropagator:
     def enable_stop_conditions(self, name, **kwargs):
         self.stop_conditions[name] = kwargs
 
+    def get_time_stamps_1d(self):
+        return self.ts.T[0]
+
 
 def task(r, v,
          positions: SimpleQueue, names: SimpleQueue, body, time, dt, solver):

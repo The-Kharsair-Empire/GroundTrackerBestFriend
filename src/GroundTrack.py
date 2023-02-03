@@ -41,8 +41,6 @@ def plot_groundtracks(rs: np.ndarray, ts: np.ndarray, name, start_time=None):
     pass
 
 
-# TODO: this is obviously wrong, the eci to ecef part is not wrong, and ecef to latlong, the text book formula does
-#  not work
 def get_groundtracks(rs: np.ndarray, ts: np.ndarray, start_time=None):
     # if start_date is None, then the first time is at the start of the epoch time when theta gmt = 0
     # TODO: if not, read from spice file the earth theta gmt at given start time in gmt and start from that
@@ -63,13 +61,9 @@ def get_groundtracks(rs: np.ndarray, ts: np.ndarray, start_time=None):
 
 def rs_ecef2latlong(r):
     r_mag = np.linalg.norm(r)
-    # lat = np.arcsin(r[2] / r_mag)
-    # long = np.arccos((r[0] / r_mag * np.cos(lat)))
     lat = np.arcsin(r[2] / r_mag)
     long = np.arctan2(r[1], r[0])
 
-    # if r[1] / r_mag <= 0:
-    #     long = 2 * np.pi - long
     r2d = 180.0 / np.pi
 
     return np.array([lat * r2d, long * r2d, r_mag])
