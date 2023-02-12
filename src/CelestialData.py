@@ -24,9 +24,9 @@ class CelestialBody:
     G1: float = 0.0  # kg-km^3
 
     def __post_init__(self):
-        for field in fields(self):
-            if getattr(self, field.name) is None:
-                setattr(self, field.name, field.default)
+        for field_ in fields(self):
+            if getattr(self, field_.name) is None:
+                setattr(self, field_.name, field_.default)
 
 
 sun = CelestialBody('Sun', 1.989e30, 1.32712e11, 695700.0, G1=1e8)

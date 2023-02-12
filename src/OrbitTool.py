@@ -127,10 +127,10 @@ def rotmat_eci2ecef(theta_gmt):
 
     # this is the rotation matrix for right hand frame
     return np.array([
-            [c(theta_gmt), s(theta_gmt), 0],
-            [-s(theta_gmt), c(theta_gmt), 0],
-            [0, 0, 1]
-        ])
+        [c(theta_gmt), s(theta_gmt), 0],
+        [-s(theta_gmt), c(theta_gmt), 0],
+        [0, 0, 1]
+    ])
 
 
 def rotmat_perifocal2eci(raan, i, aop):
@@ -221,3 +221,15 @@ def hohmann_transfer_scalar_dv(r0, r1, body, separate=True):
         return vis_viva_dv1(r0, r1, body.mu) + vis_viva_dv2(r0, r1, body.mu), t_transfer
 
 
+def get_inclination_for_rate_of_raan_change(dOmega, a, e, body):
+    """
+    getting the inclination for a circular orbit with a given semi-major axis
+    needed for J2 perturbation to give the orbiting object a desired raan change (raan_dot)
+    useful for application like sun-synchronous orbit
+    https://trs.jpl.nasa.gov/bitstream/handle/2014/37900/04-0263.pdf?sequence=1&isAllowed=y
+    """
+    assert e <= 0.001, "This formula only work for near circular orbit"
+    p = a * (1 - e ** 2)
+    n = (body.mu / a ** 3) ** 0.5  # sqrt
+    r2d = 180.0 / np.pi
+    return np.arccos((-2 * dOmega) / (3 * body.j2 * (body.radius / p) ** 2 * n)) * r2d

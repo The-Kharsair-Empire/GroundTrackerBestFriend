@@ -177,26 +177,6 @@ ISS (ZARYA)
     plot_coes_over_time(propagator.coes, propagator.ts, time_unit='day')
 
 
-def sun_synchronous_orbit():  # sun synchronous orbit
-
-    body = cd.earth
-    rs = []
-    altitude = [400, 1000, 1400]
-    inclination = [97.03, 99.49, 101.43]
-    titles = ['400 km SSO', '1000 km SSO', '1400 km SSO']
-    for i in range(3):
-        r, v = coes2rv(body.radius + altitude[i], 0.001, inclination[i], 0.0, 0.0, 0.0, body.mu, deg=True)
-        propagator = OrbitPropagator(r, v, 3600 * 48, 100.0, body)
-        propagator.enable_perturbation('J2')
-        propagator.propagate_orbit('lsoda')
-        propagator.calculate_all_coes(deg=True)
-
-        plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
-        rs.append(propagator.rs)
-
-    plot_n_orbit_3d(rs, titles, body.radius, title='SSO')
-
-
 def aerodynamic_drag():  # air-drag
 
     body = cd.earth
@@ -743,6 +723,46 @@ def geo_synchronous_orbit():
     groundtracks(rs, ts, titles)
 
 
+def inclination_for_sun_synchronous_orbit_at_specific_altitude():
+    from src import get_inclination_for_rate_of_raan_change
+    altitudes = [400, 1000, 1400]
+    body = cd.earth
+    d2r = np.pi / 180.0
+    raan_rate_of_change = 360 * d2r / (365.242199 * 24.0 * 3600.0)  # radian in second
+
+    for alt in altitudes:
+        i = get_inclination_for_rate_of_raan_change(raan_rate_of_change, alt + body.radius, 0.0001, body)
+        print(f"SSO at altitude {alt} has inclination of {i}")
+
+
+def sun_synchronous_orbit():  # sun synchronous orbit
+    from src import get_inclination_for_rate_of_raan_change
+    body = cd.earth
+    rs = []
+    altitude = [400, 1000, 1400]
+    # inclination = [97.03, 99.49, 101.43]
+    d2r = np.pi / 180.0
+    raan_rate_of_change = 360 * d2r / (365.242199 * 24.0 * 3600.0)
+    titles = ['400 km SSO', '1000 km SSO', '1400 km SSO']
+    for i in range(3):
+        # r, v = coes2rv(body.radius + altitude[i], 0.001, inclination[i], 0.0, 0.0, 0.0, body.mu, deg=True)
+        e = 0.001
+        r, v = coes2rv(body.radius + altitude[i], e,
+                       get_inclination_for_rate_of_raan_change(raan_rate_of_change,
+                                                               body.radius + altitude[i],
+                                                               e, body),
+                       0.0, 0.0, 0.0, body.mu, deg=True)
+        propagator = OrbitPropagator(r, v, 3600 * 24 * 10, 100.0, body)
+        propagator.enable_perturbation('J2')
+        propagator.propagate_orbit('lsoda')
+        propagator.calculate_all_coes(deg=True)
+
+        plot_coes_over_time(propagator.coes, propagator.ts, time_unit='hour')
+        rs.append(propagator.rs)
+
+    plot_n_orbit_3d(rs, titles, body.radius, title='SSO')
+
+
 if __name__ == '__main__':
     # lambert_problem_solver()
     # hohmann_transfer()
@@ -751,5 +771,6 @@ if __name__ == '__main__':
     # spice_data_solar_system()
     # ground_track()
     # solar_radiation_pressure()
-    # sun_synchronous_orbit()
-    geo_synchronous_orbit()
+    sun_synchronous_orbit()
+    # geo_synchronous_orbit()
+    # inclination_for_sun_synchronous_orbit_at_specific_altitude()

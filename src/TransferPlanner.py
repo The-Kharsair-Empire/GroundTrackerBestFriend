@@ -2,12 +2,13 @@ from .OrbitTool import hohmann_transfer_scalar_dv
 from .Plotting import plot_n_orbit_3d
 
 
-def hohmann_transfer_planner(coes0, coes1, body):
+def transfer_planner(coes0, coes1, body):
     # TODO:
     """
     assumption, co-planar, impulsive burn at pe or ap only.
     all orbit are elliptical.
-    spacecraft in prograde direction, i.e. counter-clockwise
+    spacecraft in prograde direction
+
     """
 
     a_init, e_init, i_init, raan_init, aop_init, ta_init = coes0
